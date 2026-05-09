@@ -1,0 +1,13 @@
+# General files
+**/*.pdf
+
+# Editor files
+**/.vscode
+**/*.code-workspace
+**/.settings/
+**/.vs/
+
+# Python checkpoints, pytorch and JSON data
+**/.ipynb_checkpoints/
+**/*.pt
+**/*.json
