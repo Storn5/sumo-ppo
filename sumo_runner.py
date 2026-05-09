@@ -6,7 +6,7 @@ import traci
 
 sumo_config = [
     'sumo-gui',
-    '-c', 'tjunction.sumocfg',
+    '-c', 'intersection.sumocfg',
     '--step-length', '0.1',
     '--delay', '200',
     '--lateral-resolution', '0.1'
@@ -14,17 +14,21 @@ sumo_config = [
 
 traci.start(sumo_config)
 
-total_speed = 0
-steps = 0
+EPISODE_LENGH = 1000 # 100 second limit
+MIN_PHASE_LENGTH = 30 # 3 seconds is the default length of a yellow signal
 
-while steps < 100:
-    steps += 1
-    traci.simulationStep()
-    if 'agent' in traci.vehicle.getIDList():
-        vehicle_speed = traci.vehicle.getSpeed('agent')
-        total_speed += vehicle_speed
-        print(f'Speed: {vehicle_speed}')
+def main():    
+    while steps < EPISODE_LENGH:
+        steps += 1
+        traci.simulationStep()
+        if 'agent' in traci.vehicle.getIDList():
+            vehicle_speed = traci.vehicle.getSpeed('agent')
+            total_speed += vehicle_speed
+            print(f'Speed: {vehicle_speed}')
 
-print(f'Average speed: {total_speed / steps}')
+    print(f'Average speed: {total_speed / steps}')
 
-traci.close()
+    traci.close()
+
+if __name__ == '__main__':
+    main()

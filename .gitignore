@@ -7,7 +7,10 @@
 **/.settings/
 **/.vs/
 
-# Python checkpoints, pytorch and JSON data
+# Python checkpoints, pytorch and JSON data, CSV logs, zip files for models
 **/.ipynb_checkpoints/
 **/*.pt
 **/*.json
+**/*.csv
+**/*.zip
+
