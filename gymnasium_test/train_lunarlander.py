@@ -18,14 +18,13 @@ from stable_baselines3.common.logger import configure
 #     set_random_seed(seed)
 #     return _init
 
-models_dir = 'models_lunarlander/ppo'
-logs_dir = 'logs_lunarlander'
+models_dir = 'models/ppo'
+logs_dir = 'logs'
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     for folder in (models_dir, logs_dir):
         if not os.path.exists(folder):
             os.makedirs(folder)
-
 
     test_env = gym.make('LunarLander-v3', render_mode='rgb_array')
     print('Checking env')
@@ -38,13 +37,11 @@ if __name__ == "__main__":
     # DummyVecEnv should be faster, because it creates only 1 process w/ multiple envs
     vec_env = make_vec_env('LunarLander-v3', n_envs=num_cpu, seed=0, vec_env_cls=DummyVecEnv, monitor_dir=logs_dir)
 
-    logger = configure(logs_dir, ["csv"])
-
-    print('Training')
+    logger = configure(logs_dir, ['csv'])
 
     # Iteration steps = num_cpu * n_steps = 10000
     # num_cpu * n_steps (real batch size) has to be divisible by batch_size (minibatch size)
-    model_ppo = PPO('MlpPolicy', vec_env, verbose=0, device='cpu', tensorboard_log=logs_dir, n_steps=1250, batch_size=50)
+    model_ppo = PPO('MlpPolicy', vec_env, verbose=0, tensorboard_log=logs_dir, n_steps=1250, batch_size=50)
     model_ppo.set_logger(logger)
 
     for i in range(1, 31):

@@ -6,7 +6,7 @@ import traci
 
 sumo_config = [
     'sumo-gui',
-    '-c', 'intersection.sumocfg',
+    '-c', 'lights/sumo_env/sumo_files/intersection.sumocfg',
     '--step-length', '0.1',
     '--delay', '200',
     '--lateral-resolution', '0.1'
@@ -17,7 +17,7 @@ traci.start(sumo_config)
 EPISODE_LENGH = 1000 # 100 second limit
 MIN_PHASE_LENGTH = 30 # 3 seconds is the default length of a yellow signal
 
-def main():    
+def main():
     while steps < EPISODE_LENGH:
         steps += 1
         traci.simulationStep()

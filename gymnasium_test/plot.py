@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 from stable_baselines3.common.results_plotter import load_results, ts2xy
 
-logs_dir = 'logs_lunarlander'
+logs_dir = 'logs'
 
 def moving_average(values, window):
     '''
