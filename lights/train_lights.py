@@ -1,7 +1,5 @@
 import os
-# import sys
 from datetime import datetime
-# from gymnasium.envs.registration import register
 
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import SubprocVecEnv
@@ -14,24 +12,24 @@ from sumo_env.lights_env import LightsEnv
 # Env setup
 SIMULATION_STEPS_LIMIT = 30_000 # Steps per simulation (how many tenths of a second), but we only make an action every 60 steps (every 6 seconds)
 MODEL_STEPS_LIMIT = SIMULATION_STEPS_LIMIT // 60
-AWT_COEF = 0.1
-AQL_COEF = 0.3
-SPEED_COEF = 0.1
-SUCCESS_COEF = 0.5
+AWT_COEF = 0
+AQL_COEF = 0
+SPEED_COEF = 0.25
+SUCCESS_COEF = 0
 
 # Hyperparameters setup
 LEARNING_RATE = 0.0003
-ENTROPY_COEF = 0.01
+ENTROPY_COEF = 0.001
 GAMMA = 0.99
 LAMBDA = 0.95
 
 EPISODES_PER_MINIBATCH = 2 # How many episodes until each update
 NUM_CPUS = 8 # How many envs are trained in parallel
-TOTAL_BATCHES = 20 # How many updates to run in total for training
+TOTAL_BATCHES = 50 # How many updates to run in total for training
 
 STEPS_PER_UPDATE = MODEL_STEPS_LIMIT * EPISODES_PER_MINIBATCH
 STEPS_PER_BATCH = NUM_CPUS * STEPS_PER_UPDATE # Real batch size (STEPS_PER_BATCH) has to be divisible by MINIBATCH_SIZE
-MINIBATCH_SIZE = STEPS_PER_BATCH // 16 # How many steps in each "minibatch" that PPO performs
+MINIBATCH_SIZE = STEPS_PER_BATCH // 32 # How many steps in each "minibatch" that PPO performs
 
 model_name = 'ppo'
 model_name = f'{datetime.now()}-{model_name}'.replace(':', '_').replace('-', '_')
@@ -42,11 +40,6 @@ if __name__ == '__main__':
   for folder in (models_dir, logs_dir):
     if not os.path.exists(folder):
       os.makedirs(folder)
-
-#   register(
-#     id='Lights-Sumo-v1',
-#     entry_point=LightsEnv,
-#   )
 
   # DummyVecEnv could be faster, because it creates only 1 process w/ multiple envs
   vec_env = make_vec_env('Lights-Sumo-v1', n_envs=NUM_CPUS, seed=0, vec_env_cls=SubprocVecEnv, env_kwargs={

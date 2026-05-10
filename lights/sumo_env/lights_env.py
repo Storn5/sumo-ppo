@@ -100,7 +100,7 @@ class LightsEnv(gym.Env):
         sumo_cmd.extend(['--window-size', f'{self.render_resolution[0]},{self.render_resolution[1]}'])
 
     # Start SUMO sim
-    traci.start(sumo_cmd, port=self.label, label=self.label)
+    traci.start(sumo_cmd, port=self.label % 65536, label=self.label)
     self.sumo = traci.getConnection(self.label)
     if self.render_mode is not None:
       self.sumo.gui.setSchema(traci.gui.DEFAULT_VIEW, 'real world')
@@ -166,6 +166,7 @@ class LightsEnv(gym.Env):
     aql_reward = -self.aql_coef * info['total_queued']
     speed_reward = self.speed_coef * info['mean_speed']
     success_reward = self.success_coef * info['total_departed']
+    # print(f'AWT Reward: {awt_reward}, AQL Reward: {aql_reward}, Speed Reward: {speed_reward}, Success Reward: {success_reward}')
     return awt_reward + aql_reward + speed_reward + success_reward
 
   def get_info(self):
@@ -208,20 +209,21 @@ if __name__ == '__main__':
     entry_point=LightsEnv,
   )
 
-  test_env = gym.make(
-    'Lights-Sumo-v1',
-    steps_limit=steps_limit,
-    awt_coef=0.25,
-    aql_coef=0.25,
-    speed_coef=0.25,
-    success_coef=0.25,
-    render_mode='human'
-  )
+  # test_env = gym.make(
+  #   'Lights-Sumo-v1',
+  #   steps_limit=steps_limit,
+  #   awt_coef=0.25,
+  #   aql_coef=0.25,
+  #   speed_coef=0.25,
+  #   success_coef=0.25,
+  #   sumo_config_file='sumo_files/intersection.sumocfg',
+  #   render_mode='human'
+  # )
 
-  print('Checking env')
-  check_env(test_env, warn=True)
-  print('Closing env')
-  test_env.close()
+  # print('Checking env')
+  # check_env(test_env, warn=True)
+  # print('Closing env')
+  # test_env.close()
 
   env = gym.make(
     'Lights-Sumo-v1',
@@ -230,6 +232,7 @@ if __name__ == '__main__':
     aql_coef=0.25,
     speed_coef=0.25,
     success_coef=0.25,
+    sumo_config_file='sumo_files/intersection.sumocfg',
     render_mode='human'
   )
   obs, _ = env.reset()
