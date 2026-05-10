@@ -34,7 +34,7 @@ MINIBATCH_SIZE = STEPS_PER_BATCH // 32 # How many steps in each "minibatch" that
 model_name = 'ppo'
 model_name = f'{datetime.now()}-{model_name}'.replace(':', '_').replace('-', '_')
 models_dir = f'models/{model_name}'
-logs_dir = 'logs'
+logs_dir = 'logs/{model_name}'
 
 if __name__ == '__main__':
   for folder in (models_dir, logs_dir):
