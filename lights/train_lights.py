@@ -12,10 +12,10 @@ from sumo_env.lights_env import LightsEnv
 # Env setup
 SIMULATION_STEPS_LIMIT = 9_000 # Steps per simulation (how many tenths of a second), but we only make an action every 60 steps (every 6 seconds)
 MODEL_STEPS_LIMIT = SIMULATION_STEPS_LIMIT // 60
-AWT_COEF = 0.1
-AQL_COEF = 0.1
-SPEED_COEF = 0.25
-SUCCESS_COEF = 0.45
+AWT_COEF = 0.05
+AQL_COEF = 0.05
+SPEED_COEF = 0.15
+SUCCESS_COEF = 0.005
 
 # Hyperparameters setup
 LEARNING_RATE = 0.001

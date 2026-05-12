@@ -35,7 +35,7 @@ class LightsEnv(gym.Env):
     self.render_resolution = render_resolution
 
     self.action_space = spaces.Discrete(2) # 2 actions - 0 = don't change signal, 1 = change signal
-    self.observation_space = spaces.Box(low=0, high=1, shape=(NUM_PHASES + NUM_LANES,), dtype=np.float32) # One-hot encoded phases followed by lane queue density
+    self.observation_space = spaces.Box(low=0, high=1, shape=(2 + NUM_LANES,), dtype=np.float32) # One-hot encoded phases followed by lane queue density
     self.reward_space = spaces.Box(low=-np.inf, high=np.inf, shape=(1,), dtype=np.float32)
 
     self.sumo = None
@@ -205,7 +205,7 @@ class LightsEnv(gym.Env):
     return info
 
   def get_normalized_observation(self):
-    phase_id_ohe = [1 if self.cur_phase == i else 0 for i in range(NUM_PHASES)] # One-hot encoding
+    phase_id_ohe = [self.cur_phase == 0, self.cur_phase != 0] # One-hot encoding
     lanes_density = [
       self.sumo.lane.getLastStepVehicleNumber(lane) / self.max_lane_occupancy
       for lane in self.lanes
@@ -243,10 +243,10 @@ if __name__ == '__main__':
   env = gym.make(
     'Lights-Sumo-v1',
     steps_limit=steps_limit,
-    awt_coef=0.25,
-    aql_coef=0.25,
-    speed_coef=0.25,
-    success_coef=0.25,
+    awt_coef=0.05,
+    aql_coef=0.05,
+    speed_coef=0.15,
+    success_coef=0.005,
     sumo_config_file='sumo_files/intersection.sumocfg',
     render_mode='human'
   )
