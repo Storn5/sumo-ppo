@@ -33,7 +33,7 @@ STEPS_PER_BATCH = NUM_CPUS * STEPS_PER_UPDATE # Real batch size (STEPS_PER_BATCH
 MINIBATCH_SIZE = STEPS_PER_BATCH // 32 # How many steps in each "minibatch" that PPO performs
 
 model_name = 'ppo_lr0_001_ec0_04_g99_l95'
-model_to_load = 'models/2026_05_11T15_34_32_ppo_lr0_001_ec0_02_g99_l95/392000.zip'
+model_to_load = 'models/ppo_lr0_001_ec0_04_g99_l95_2026_05_12T14_26_17/120000.zip'
 model_name = f'{model_name}_{datetime.now().strftime('%Y_%m_%dT%H_%M_%S')}'
 models_dir = f'models/{model_name}'
 logs_dir = f'logs/{model_name}'

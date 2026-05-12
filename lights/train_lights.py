@@ -12,26 +12,26 @@ from sumo_env.lights_env import LightsEnv
 # Env setup
 SIMULATION_STEPS_LIMIT = 9_000 # Steps per simulation (how many tenths of a second), but we only make an action every 60 steps (every 6 seconds)
 MODEL_STEPS_LIMIT = SIMULATION_STEPS_LIMIT // 60
-AWT_COEF = 0
-AQL_COEF = 0
+AWT_COEF = 0.1
+AQL_COEF = 0.1
 SPEED_COEF = 0.25
-SUCCESS_COEF = 0
+SUCCESS_COEF = 0.45
 
 # Hyperparameters setup
 LEARNING_RATE = 0.001
-ENTROPY_COEF = 0.04
+ENTROPY_COEF = 0.02
 GAMMA = 0.99
 LAMBDA = 0.95
 
 EPISODES_PER_MINIBATCH = 2 # How many episodes until each update
 NUM_CPUS = 8 # How many envs are trained in parallel
-TOTAL_BATCHES = 50 # How many updates to run in total for training
+TOTAL_BATCHES = 100 # How many updates to run in total for training
 
 STEPS_PER_UPDATE = MODEL_STEPS_LIMIT * EPISODES_PER_MINIBATCH
 STEPS_PER_BATCH = NUM_CPUS * STEPS_PER_UPDATE # Real batch size (STEPS_PER_BATCH) has to be divisible by MINIBATCH_SIZE
 MINIBATCH_SIZE = STEPS_PER_BATCH // 32 # How many steps in each "minibatch" that PPO performs
 
-model_name = 'ppo_lr0_001_ec0_04_g99_l95'
+model_name = 'ppo_lr0_001_ec0_02_g99_l95'
 model_name = f'{model_name}_{datetime.now().strftime('%Y_%m_%dT%H_%M_%S')}'
 models_dir = f'models/{model_name}'
 logs_dir = f'logs/{model_name}'
