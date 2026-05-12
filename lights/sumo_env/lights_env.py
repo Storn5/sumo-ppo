@@ -38,13 +38,16 @@ class LightsEnv(gym.Env):
     self.observation_space = spaces.Box(low=0, high=1, shape=(NUM_PHASES + NUM_LANES,), dtype=np.float32) # One-hot encoded phases followed by lane queue density
     self.reward_space = spaces.Box(low=-np.inf, high=np.inf, shape=(1,), dtype=np.float32)
 
+    self.sumo = None
+    self.label = os.getpid()
     self._cur_step = 0
     self._cur_episode = 0
     self._episode_ended = False
     self.num_arrived_vehicles = 0
     self.num_departed_vehicles = 0
-    self.label = os.getpid()
-    self.sumo = None
+    self.episode_mean_speed = 0
+    self.episode_mean_waiting_time = 0
+    self.episode_mean_queue_length = 0
 
     if self.render_mode is not None:
       self._sumo_binary = 'sumo-gui'
@@ -73,7 +76,6 @@ class LightsEnv(gym.Env):
       return np.array(img)
 
   def reset(self, seed=None, options=None):
-    # print(f'Reset called, step {self._cur_step}, episode {self._cur_episode}')
     super().reset(seed=seed, options=options)
     self._cur_step = 0
     self._episode_ended = False
@@ -82,6 +84,9 @@ class LightsEnv(gym.Env):
     self._cur_episode += 1
     self.num_arrived_vehicles = 0
     self.num_departed_vehicles = 0
+    self.episode_mean_speed = 0
+    self.episode_mean_waiting_time = 0
+    self.episode_mean_queue_length = 0
 
     # Set up SUMO command
     sumo_cmd = [
@@ -121,7 +126,6 @@ class LightsEnv(gym.Env):
     )
 
   def step(self, action):
-    # print(f'Starting step {self._cur_step}, episode {self._cur_episode}')
     # If we don't change phase, just run for 2 min phases
     # If we do, run a yellow phase, then change and run another min phase length
     for _ in range(2):
@@ -143,11 +147,11 @@ class LightsEnv(gym.Env):
       if self._episode_ended:
         break
 
-    observations = self.get_normalized_observation()
-    info = self.get_info()
-    reward = self.get_reward(info)
     terminated = False # No termination condition
     truncated = self._episode_ended
+    observations = self.get_normalized_observation()
+    info = self.get_info(truncated)
+    reward = self.get_reward(info)
 
     return (
       observations,
@@ -169,25 +173,36 @@ class LightsEnv(gym.Env):
     # print(f'AWT Reward: {awt_reward}, AQL Reward: {aql_reward}, Speed Reward: {speed_reward}, Success Reward: {success_reward}')
     return awt_reward + aql_reward + speed_reward + success_reward
 
-  def get_info(self):
+  def get_info(self, done=False):
     vehicles = self.sumo.vehicle.getIDList()
-    speeds = [self.sumo.vehicle.getSpeed(vehicle) for vehicle in vehicles]
-    waiting_times = [self.sumo.vehicle.getWaitingTime(vehicle) for vehicle in vehicles]
-    queue_lengths = [self.sumo.lane.getLastStepHaltingNumber(lane) for lane in self.lanes]
-    #num_backlogged_vehicles = len(self.sumo.simulation.getPendingVehicles())
-    return {
-      # 'total_vehicles': len(vehicles),
-      # 'total_backlogged': num_backlogged_vehicles, # Vehicles that haven't even reached the start yet but are on the way
-      # 'total_stopped': sum(
-      #   int(speed < 0.1) for speed in speeds
-      # ), # In SUMO, a vehicle is considered halting if its speed is below 0.1 m/s
+    mean_speed = 100.0 # High mean speed for a good reward, since there's no vehicles waiting
+    queue_length = 0.0
+    mean_waiting_time = 0.0
+
+    if len(vehicles):
+      mean_speed = np.mean([self.sumo.vehicle.getSpeed(vehicle) for vehicle in vehicles])
+      queue_length = sum([self.sumo.lane.getLastStepHaltingNumber(lane) for lane in self.lanes])
+      mean_waiting_time = np.mean([self.sumo.vehicle.getWaitingTime(vehicle) for vehicle in vehicles])
+
+    self.episode_mean_speed += mean_speed
+    self.episode_mean_queue_length += queue_length
+    self.episode_mean_waiting_time += mean_waiting_time
+
+    info = {
+      'mean_speed': mean_speed,
+      'total_queued': queue_length,
+      'mean_waiting_time': mean_waiting_time,
       'total_arrived': self.num_arrived_vehicles,
       'total_departed': self.num_departed_vehicles,
-      'total_queued': sum(queue_lengths), # Vehicles stopped in a queue in each lane
-      # 'total_waiting_time': sum(waiting_times),
-      'mean_waiting_time': 0.0 if len(vehicles) == 0 else np.mean(waiting_times),
-      'mean_speed': 0.0 if len(vehicles) == 0 else np.mean(speeds),
     }
+
+    if done:
+      episode_steps = self._cur_step // (MIN_PHASE_LENGTH * 2)
+      info['episode_mean_speed'] = self.episode_mean_speed / episode_steps
+      info['episode_mean_queue_length'] = self.episode_mean_queue_length / episode_steps
+      info['episode_mean_waiting_time'] = self.episode_mean_waiting_time / episode_steps
+
+    return info
 
   def get_normalized_observation(self):
     phase_id_ohe = [1 if self.cur_phase == i else 0 for i in range(NUM_PHASES)] # One-hot encoding
@@ -202,7 +217,7 @@ class LightsEnv(gym.Env):
     return observations
 
 if __name__ == '__main__':
-  steps_limit = 300
+  steps_limit = 9_000
 
   register(
     id='Lights-Sumo-v1',
@@ -238,7 +253,7 @@ if __name__ == '__main__':
   obs, _ = env.reset()
 
   print('Running env')
-  for step in range(steps_limit):
+  for step in range(steps_limit // 60):
     obs, reward, terminated, truncated, info = env.step(env.action_space.sample())
     done = terminated or truncated
     print('obs=', obs, 'reward=', reward, 'done=', done, 'info=', info)

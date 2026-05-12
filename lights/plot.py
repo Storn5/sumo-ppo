@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 from stable_baselines3.common.results_plotter import load_results, ts2xy
 
-logs_dir = 'logs/2026_05_10 22_27_32.121480_ppo'
+logs_dir = 'logs/ppo_lr0_001_ec0_02_g99_l95_2026_05_11T15_34_32'
 
 def plot_episode_stats(log_folder, title='Episode Stats'):
   progress = pd.read_csv(f'{logs_dir}/progress.csv')
