@@ -1,3 +1,8 @@
+"""
+Script for continuing the training of a PPO agent to control traffic lights in the SUMO intersection environment
+from a saved model state
+"""
+
 import os
 from datetime import datetime
 
@@ -25,13 +30,15 @@ LAMBDA = 0.95
 
 EPISODES_PER_MINIBATCH = 2 # How many episodes until each update
 NUM_CPUS = 8 # How many envs are trained in parallel
-TOTAL_BATCHES = 100 # How many updates to run in total for training
+TOTAL_BATCHES = 150 # How many updates to run in total for training
+OFFSET_BATCHES = 50 # How many batches were already run
 
 STEPS_PER_UPDATE = MODEL_STEPS_LIMIT * EPISODES_PER_MINIBATCH
 STEPS_PER_BATCH = NUM_CPUS * STEPS_PER_UPDATE # Real batch size (STEPS_PER_BATCH) has to be divisible by MINIBATCH_SIZE
 MINIBATCH_SIZE = STEPS_PER_BATCH // 32 # How many steps in each "minibatch" that PPO performs
 
-model_name = 'ppo_lr0_001_ec0_02_g99_l95'
+model_name = 'ppo_lr0_001_ec0_04_g99_l95'
+model_to_load = 'models/ppo_lr0_001_ec0_04_g99_l95_2026_05_12T14_26_17/120000.zip'
 model_name = f'{model_name}_{datetime.now().strftime('%Y_%m_%dT%H_%M_%S')}'
 models_dir = f'models/{model_name}'
 logs_dir = f'logs/{model_name}'
@@ -56,11 +63,11 @@ if __name__ == '__main__':
 
   logger = configure(logs_dir, ['csv'])
 
-  model = PPO('MlpPolicy', vec_env, device='cuda', verbose=0, tensorboard_log=logs_dir, n_steps=STEPS_PER_UPDATE, batch_size=MINIBATCH_SIZE,
-    learning_rate=LEARNING_RATE, ent_coef=ENTROPY_COEF, gamma=GAMMA, gae_lambda=LAMBDA)
+  model = PPO.load(model_to_load)
+  model.set_env(vec_env)
   model.set_logger(logger)
 
-  for i in range(1, TOTAL_BATCHES + 1):
+  for i in range(OFFSET_BATCHES + 1, TOTAL_BATCHES + OFFSET_BATCHES + 1):
     model.learn(total_timesteps=STEPS_PER_BATCH, reset_num_timesteps=False, tb_log_name=model_name, progress_bar=True)
     model.save(f'{models_dir}/{STEPS_PER_BATCH * i}')
   vec_env.close()

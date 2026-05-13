@@ -21,6 +21,7 @@ LATERAL_RESOLUTION = 0.1 # Accuracy of side-to-side vehicle movement for lane ch
 VISUAL_DELAY = 200 # Sets the speed of the visualization for the user
 
 class LightsEnv(gym.Env):
+  """Gymnasium environment using the SUMO traffic simulator to control a traffic light at a 4-way intersection"""
   metadata = {'render_modes': ['human', 'rgb_array'], 'render_fps': 60}
 
   def __init__(self, steps_limit, awt_coef, aql_coef, speed_coef, success_coef, sumo_config_file, render_mode=None, render_resolution=(1920, 1080)):
@@ -43,7 +44,6 @@ class LightsEnv(gym.Env):
     self._cur_step = 0
     self._cur_episode = 0
     self._episode_ended = False
-    self.num_arrived_vehicles = 0
     self.num_departed_vehicles = 0
     self.episode_mean_speed = 0
     self.episode_mean_waiting_time = 0
@@ -82,7 +82,6 @@ class LightsEnv(gym.Env):
     if self._cur_episode != 0:
       self.close()
     self._cur_episode += 1
-    self.num_arrived_vehicles = 0
     self.num_departed_vehicles = 0
     self.episode_mean_speed = 0
     self.episode_mean_waiting_time = 0
@@ -137,7 +136,6 @@ class LightsEnv(gym.Env):
       for _ in range(MIN_PHASE_LENGTH):
         self.sumo.simulationStep()
 
-        self.num_arrived_vehicles += self.sumo.simulation.getArrivedNumber()
         self.num_departed_vehicles += self.sumo.simulation.getDepartedNumber()
 
         self._cur_step += 1
@@ -192,7 +190,6 @@ class LightsEnv(gym.Env):
       'mean_speed': mean_speed,
       'total_queued': queue_length,
       'mean_waiting_time': mean_waiting_time,
-      'total_arrived': self.num_arrived_vehicles,
       'total_departed': self.num_departed_vehicles,
     }
 

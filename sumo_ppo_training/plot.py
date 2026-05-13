@@ -37,7 +37,7 @@ def plot_learning_curves(log_folder, title='Learning Curves'):
 
   plt.show()
 
-def plot_episode_metrics(log_folder, title='Episode Metrics'):
+def plot_lights_episode_metrics(log_folder, title='Episode Metrics'):
   monitors = []
   for i in range(8):
     monitors.append(pd.read_csv(f'{logs_dir}/{i}.monitor.csv', skiprows=1))
@@ -73,4 +73,4 @@ def plot_episode_metrics(log_folder, title='Episode Metrics'):
   plt.show()
 
 plot_learning_curves(logs_dir)
-plot_episode_metrics(logs_dir)
+plot_lights_episode_metrics(logs_dir)
