@@ -19,7 +19,7 @@ MIN_GAP = 2.5 # Default min gap of SUMO (see https://sumo.dlr.de/docs/Simulation
 STEP_LENGTH = 0.1 # Length of a step in seconds, in this case 1 second = 10 steps
 LATERAL_RESOLUTION = 0.1 # Accuracy of side-to-side vehicle movement for lane changes
 VISUAL_DELAY = 200 # Sets the speed of the visualization for the user
-SUMO_FILE = 'sumo_files/intersection.sumocfg'
+SUMO_FILE = 'sumo_env/sumo_files/intersection.sumocfg'
 
 class LightsEnv(gym.Env):
   """Gymnasium environment using the SUMO traffic simulator to control a traffic light at a 4-way intersection"""

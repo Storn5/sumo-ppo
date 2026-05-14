@@ -6,7 +6,7 @@ import os
 from datetime import datetime
 
 from stable_baselines3 import PPO
-from stable_baselines3.common.vec_env import SubprocVecEnv
+from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.logger import configure
 
@@ -28,7 +28,7 @@ GAMMA = 0.99
 LAMBDA = 0.95
 
 EPISODES_PER_MINIBATCH = 5 # How many episodes until each update
-NUM_CPUS = 8 # How many envs are trained in parallel
+NUM_CPUS = 1 # How many envs are trained in parallel
 TOTAL_BATCHES = 50 # How many updates to run in total for training
 
 STEPS_PER_UPDATE = MODEL_STEPS_LIMIT * EPISODES_PER_MINIBATCH
@@ -46,15 +46,16 @@ if __name__ == '__main__':
       os.makedirs(folder)
 
   # DummyVecEnv could be faster, because it creates only 1 process w/ multiple envs
-  vec_env = make_vec_env('Vehicle-Sumo-v1', n_envs=NUM_CPUS, seed=0, vec_env_cls=SubprocVecEnv, env_kwargs={
+  vec_env = make_vec_env('Vehicle-Sumo-v1', n_envs=NUM_CPUS, seed=0, vec_env_cls=DummyVecEnv, env_kwargs={
     'steps_limit': SIMULATION_STEPS_LIMIT,
     'collision_coef': COLLISION_COEF,
     'timeout_coef': TIMEOUT_COEF,
     'speed_coef': SPEED_COEF,
     'success_coef': SUCCESS_COEF,
     'render_mode': None,
+    'sumo_config_file': 'sumo_files/intersection_vehicle.sumocfg',
   }, monitor_dir=logs_dir, monitor_kwargs={
-    'info_keywords': ('total_departed', 'episode_mean_waiting_time', 'episode_mean_queue_length', 'episode_mean_speed')
+    'info_keywords': ('episode_mean_speed',)
   })
 
   logger = configure(logs_dir, ['csv'])

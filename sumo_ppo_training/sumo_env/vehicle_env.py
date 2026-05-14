@@ -20,19 +20,19 @@ ACTION_LENGTH = 5 # 0.5 seconds for each agent action
 STEP_LENGTH = 0.1 # Length of a step in seconds, in this case 1 second = 10 steps
 LATERAL_RESOLUTION = 0.1 # Accuracy of side-to-side vehicle movement for lane changes
 VISUAL_DELAY = 200 # Sets the speed of the visualization for the user
-SUMO_FILE = 'sumo_files/intersection_vehicle.sumocfg'
 
 class VehicleEnv(gym.Env):
   """Gymnasium environment using the SUMO traffic simulator to control a vehicle at a 4-way signalized intersection"""
   metadata = {'render_modes': ['human', 'rgb_array'], 'render_fps': 60}
 
-  def __init__(self, steps_limit, collision_coef, timeout_coef, speed_coef, success_coef, render_mode=None, render_resolution=(1920, 1080)):
+  def __init__(self, steps_limit, collision_coef, timeout_coef, speed_coef, success_coef, sumo_config_file, render_mode=None, render_resolution=(1920, 1080)):
     super().__init__()
     self.steps_limit = steps_limit
     self.collision_coef = collision_coef
     self.timeout_coef = timeout_coef
     self.speed_coef = speed_coef
     self.success_coef = success_coef
+    self.sumo_config_file = sumo_config_file
     self.render_mode = render_mode
     self.render_resolution = render_resolution
 
@@ -91,7 +91,7 @@ class VehicleEnv(gym.Env):
     # Set up SUMO command
     sumo_cmd = [
       self._sumo_binary,
-      '-c', SUMO_FILE,
+      '-c', self.sumo_config_file,
       '--step-length', str(STEP_LENGTH),
       '--lateral-resolution', str(LATERAL_RESOLUTION),
       '--no-step-log',
@@ -234,6 +234,7 @@ if __name__ == '__main__':
     timeout_coef=10.0,
     speed_coef=0.1,
     success_coef=10.0,
+    sumo_config_file='sumo_files/intersection_vehicle.sumocfg',
     render_mode='human'
   )
 
@@ -249,6 +250,7 @@ if __name__ == '__main__':
     timeout_coef=10.0,
     speed_coef=0.1,
     success_coef=10.0,
+    sumo_config_file='sumo_files/intersection_vehicle.sumocfg',
     render_mode='human'
   )
   obs, _ = env.reset()
