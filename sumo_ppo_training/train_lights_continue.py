@@ -55,7 +55,6 @@ if __name__ == '__main__':
     'aql_coef': AQL_COEF,
     'speed_coef': SPEED_COEF,
     'success_coef': SUCCESS_COEF,
-    'sumo_config_file': 'sumo_env/sumo_files/intersection.sumocfg',
     'render_mode': None,
   }, monitor_dir=logs_dir, monitor_kwargs={
     'info_keywords': ('total_departed', 'episode_mean_waiting_time', 'episode_mean_queue_length', 'episode_mean_speed')

@@ -1,4 +1,5 @@
 import os
+from random import choice
 import numpy as np
 import traci
 import gymnasium as gym
@@ -13,31 +14,32 @@ ACTION_ACCELERATE = 1
 ACTION_BRAKE = 2
 ACTION_SWITCH_LANE_0 = 3
 ACTION_SWITCH_LANE_1 = 4
-AGENT_VEHICLE_ID = 'agent_vehicle'
-AGENT_ROUTE_ID = 'agent_route'
+AGENT_VEHICLE_ID = 'agent'
 MAX_TRAFFIC = 10 # Maximum number of surrounding vehicles, could be lower
 ACTION_LENGTH = 5 # 0.5 seconds for each agent action
 STEP_LENGTH = 0.1 # Length of a step in seconds, in this case 1 second = 10 steps
 LATERAL_RESOLUTION = 0.1 # Accuracy of side-to-side vehicle movement for lane changes
 VISUAL_DELAY = 200 # Sets the speed of the visualization for the user
+SUMO_FILE = 'sumo_files/intersection_vehicle.sumocfg'
 
 class VehicleEnv(gym.Env):
   """Gymnasium environment using the SUMO traffic simulator to control a vehicle at a 4-way signalized intersection"""
   metadata = {'render_modes': ['human', 'rgb_array'], 'render_fps': 60}
 
-  def __init__(self, steps_limit, collision_coef, timeout_coef, speed_coef, success_coef, sumo_config_file, render_mode=None, render_resolution=(1920, 1080)):
+  def __init__(self, steps_limit, collision_coef, timeout_coef, speed_coef, success_coef, render_mode=None, render_resolution=(1920, 1080)):
     super().__init__()
     self.steps_limit = steps_limit
     self.collision_coef = collision_coef
     self.timeout_coef = timeout_coef
     self.speed_coef = speed_coef
     self.success_coef = success_coef
-    self.sumo_config_file = sumo_config_file
     self.render_mode = render_mode
     self.render_resolution = render_resolution
 
-    self.action_space = spaces.Discrete(5) # 5 actions: do nothing, accelerate, brake, go to left lane, go to right lane
-    self.observation_space = spaces.Box(low=0, high=1, shape=(4 * (1 + MAX_TRAFFIC),), dtype=np.float32) # Own and traffic positions, orientations and speeds
+    # 5 actions: do nothing, accelerate, brake, go to left lane, go to right lane
+    self.action_space = spaces.Discrete(5)
+    # One-hot encoded destinations (3 possible), ego and traffic vehicle positions, orientations and speeds
+    self.observation_space = spaces.Box(low=0, high=1, shape=(3 + 4 * (1 + MAX_TRAFFIC),), dtype=np.float32)
     self.reward_space = spaces.Box(low=-np.inf, high=np.inf, shape=(1,), dtype=np.float32)
 
     self.sumo = None
@@ -89,7 +91,7 @@ class VehicleEnv(gym.Env):
     # Set up SUMO command
     sumo_cmd = [
       self._sumo_binary,
-      '-c', self.sumo_config_file,
+      '-c', SUMO_FILE,
       '--step-length', str(STEP_LENGTH),
       '--lateral-resolution', str(LATERAL_RESOLUTION),
       '--no-step-log',
@@ -109,6 +111,11 @@ class VehicleEnv(gym.Env):
     self.sumo = traci.getConnection(self.label)
     if self.render_mode is not None:
       self.sumo.gui.setSchema(traci.gui.DEFAULT_VIEW, 'real world')
+
+    # Choose random destination
+    self.dest = choice(['-E0', 'E1', '-E2'])
+    self.sumo.vehicle.setRoute(AGENT_VEHICLE_ID, ['-E3', self.dest])
+    self.sumo.simulationStep()
 
     info = self.get_info()
     observations = self.get_normalized_observation(info)
@@ -173,6 +180,7 @@ class VehicleEnv(gym.Env):
 
     if not done:
       speed = self.sumo.vehicle.getSpeed(AGENT_VEHICLE_ID)
+      speed = speed * (speed > 0)
       info['speed'] = speed
       self.episode_mean_speed += speed
 
@@ -188,12 +196,12 @@ class VehicleEnv(gym.Env):
 
     # Ego vehicle
     x, y = self.sumo.vehicle.getPosition(AGENT_VEHICLE_ID)
+    x, y = x / 200.0 + 0.5, y / 200.0 + 0.5
     angle = self.sumo.vehicle.getAngle(AGENT_VEHICLE_ID) / 360.0
     observations = np.array(
-      [x, y, info['speed'], angle],
+      [self.dest == '-E0', self.dest == 'E1', self.dest == '-E2', x, y, info['speed'] / 20.0, angle],
       dtype=np.float32
     )
-    print(f'X: {x}, Y: {y}, Angle: {angle}, Speed: {info['speed']}')
 
     # Other traffic
     vehicle_ids = sorted(self.sumo.vehicle.getIDList())
@@ -201,9 +209,13 @@ class VehicleEnv(gym.Env):
       if vehicle_id == AGENT_VEHICLE_ID:
         continue
       x, y = self.sumo.vehicle.getPosition(vehicle_id)
+      x, y = x / 200.0 + 0.5, y / 200.0 + 0.5
       angle = self.sumo.vehicle.getAngle(vehicle_id) / 360.0
-      speed = self.sumo.vehicle.getSpeed(vehicle_id)
-      observations = np.append(observations, [x, y, speed, angle])
+      speed = np.abs(self.sumo.vehicle.getSpeed(vehicle_id)) / 20.0
+      speed = speed * (speed > 0)
+      observations = np.append(observations, np.array([x, y, speed, angle], dtype=np.float32))
+
+    observations = np.append(observations, np.zeros(shape=(4 * (MAX_TRAFFIC - len(vehicle_ids) + 1),), dtype=np.float32))
 
     return observations
 
@@ -215,30 +227,28 @@ if __name__ == '__main__':
     entry_point=VehicleEnv,
   )
 
-  # test_env = gym.make(
-  #   'Vehicle-Sumo-v1',
-  #   steps_limit=steps_limit,
-  #   collision_coef=0.25,
-  #   timeout_coef=0.25,
-  #   speed_coef=0.25,
-  #   success_coef=0.25,
-  #   sumo_config_file='sumo_files/intersection_vehicle.sumocfg',
-  #   render_mode='human'
-  # )
+  test_env = gym.make(
+    'Vehicle-Sumo-v1',
+    steps_limit=steps_limit,
+    collision_coef=10.0,
+    timeout_coef=10.0,
+    speed_coef=0.1,
+    success_coef=10.0,
+    render_mode='human'
+  )
 
-  # print('Checking env')
-  # check_env(test_env, warn=True)
-  # print('Closing env')
-  # test_env.close()
+  print('Checking env')
+  check_env(test_env, warn=True)
+  print('Closing env')
+  test_env.close()
 
   env = gym.make(
     'Vehicle-Sumo-v1',
     steps_limit=steps_limit,
-    collision_coef=0.05,
-    timeout_coef=0.05,
-    speed_coef=0.15,
-    success_coef=0.005,
-    sumo_config_file='sumo_files/intersection_vehicle.sumocfg',
+    collision_coef=10.0,
+    timeout_coef=10.0,
+    speed_coef=0.1,
+    success_coef=10.0,
     render_mode='human'
   )
   obs, _ = env.reset()
