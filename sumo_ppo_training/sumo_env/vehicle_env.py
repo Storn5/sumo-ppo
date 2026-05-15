@@ -15,19 +15,20 @@ ACTION_BRAKE = 2
 ACTION_SWITCH_LANE_0 = 3
 ACTION_SWITCH_LANE_1 = 4
 AGENT_VEHICLE_ID = 'agent'
-MAX_TRAFFIC = 10 # Maximum number of surrounding vehicles, could be lower
+ABSOLUTE_MAX_TRAFFIC = 20 # Maximum number of surrounding vehicles in the observation space, the actual max_traffic limit could be smaller
 ACTION_LENGTH = 5 # 0.5 seconds for each agent action
 STEP_LENGTH = 0.1 # Length of a step in seconds, in this case 1 second = 10 steps
-LATERAL_RESOLUTION = 0.1 # Accuracy of side-to-side vehicle movement for lane changes
+LATERAL_RESOLUTION = 0.2 # Accuracy of side-to-side vehicle movement for lane changes
 VISUAL_DELAY = 200 # Sets the speed of the visualization for the user
 
 class VehicleEnv(gym.Env):
   """Gymnasium environment using the SUMO traffic simulator to control a vehicle at a 4-way signalized intersection"""
   metadata = {'render_modes': ['human', 'rgb_array'], 'render_fps': 60}
 
-  def __init__(self, steps_limit, collision_coef, timeout_coef, speed_coef, success_coef, sumo_config_file, render_mode=None, render_resolution=(1920, 1080)):
+  def __init__(self, steps_limit, max_traffic, collision_coef, timeout_coef, speed_coef, success_coef, sumo_config_file, render_mode=None, render_resolution=(1920, 1080)):
     super().__init__()
     self.steps_limit = steps_limit
+    self.max_traffic = max_traffic
     self.collision_coef = collision_coef
     self.timeout_coef = timeout_coef
     self.speed_coef = speed_coef
@@ -39,13 +40,12 @@ class VehicleEnv(gym.Env):
     # 5 actions: do nothing, accelerate, brake, go to left lane, go to right lane
     self.action_space = spaces.Discrete(5)
     # One-hot encoded destinations (3 possible), ego and traffic vehicle positions, orientations and speeds
-    self.observation_space = spaces.Box(low=0, high=1, shape=(3 + 4 * (1 + MAX_TRAFFIC),), dtype=np.float32)
+    self.observation_space = spaces.Box(low=0, high=1, shape=(3 + 4 * (1 + ABSOLUTE_MAX_TRAFFIC),), dtype=np.float32)
     self.reward_space = spaces.Box(low=-np.inf, high=np.inf, shape=(1,), dtype=np.float32)
 
     self.sumo = None
     self.label = os.getpid()
     self._cur_step = 0
-    self._cur_episode = 0
     self._episode_ended = False
     self._success = False
     self._fail_collision = False
@@ -83,9 +83,6 @@ class VehicleEnv(gym.Env):
     self._episode_ended = False
     self._success = False
     self._fail_collision = False
-    if self._cur_episode != 0:
-      self.close()
-    self._cur_episode += 1
     self.episode_mean_speed = 0
 
     # Set up SUMO command
@@ -95,10 +92,12 @@ class VehicleEnv(gym.Env):
       '--step-length', str(STEP_LENGTH),
       '--lateral-resolution', str(LATERAL_RESOLUTION),
       '--no-step-log',
-      '--no-warnings',
       '--random',
-      '--max-num-vehicles', str(MAX_TRAFFIC + 1),
-      '--collision.mingap-factor', '0' # Only detect direct physical collisions 
+      '--error-log', '/dev/null',
+      '--max-num-vehicles', str(self.max_traffic + 1),
+      #'--collision.mingap-factor', '0', # Only detect direct physical collisions
+      '--collision.check-junctions',
+      '--collision.action', 'remove' # Detect collisions
     ]
     if self.render_mode is not None:
       sumo_cmd.extend(['--delay', str(VISUAL_DELAY)])
@@ -106,15 +105,21 @@ class VehicleEnv(gym.Env):
       if self.render_mode == 'rgb_array':
         sumo_cmd.extend(['--window-size', f'{self.render_resolution[0]},{self.render_resolution[1]}'])
 
-    # Start SUMO sim
-    traci.start(sumo_cmd, port=self.label % 65536, label=self.label)
-    self.sumo = traci.getConnection(self.label)
+    if self.sumo is None:
+      # Start SUMO sim only the first time
+      traci.start(sumo_cmd, port=self.label % 65536, label=self.label)
+      self.sumo = traci.getConnection(self.label)
+    else:
+      # Just reload the simulation state
+      self.sumo.load(sumo_cmd[1:])
+
     if self.render_mode is not None:
       self.sumo.gui.setSchema(traci.gui.DEFAULT_VIEW, 'real world')
 
     # Choose random destination
     self.dest = choice(['-E0', 'E1', '-E2'])
     self.sumo.vehicle.setRoute(AGENT_VEHICLE_ID, ['-E3', self.dest])
+    self.sumo.vehicle.setSpeedMode(AGENT_VEHICLE_ID, 96) # Disable safety checks for vehicle control
     self.sumo.simulationStep()
 
     info = self.get_info()
@@ -134,12 +139,15 @@ class VehicleEnv(gym.Env):
       if self._cur_step > self.steps_limit:
         self._episode_ended = True
         break
-      elif AGENT_VEHICLE_ID in self.sumo.simulation.getCollidingVehiclesIDList():
+      if AGENT_VEHICLE_ID in self.sumo.simulation.getCollidingVehiclesIDList():
         self._fail_collision = True
         break
       elif AGENT_VEHICLE_ID in self.sumo.simulation.getArrivedIDList():
         self._success = True
         break
+      new_vehicles = self.sumo.simulation.getDepartedIDList()
+      for new_vehicle_id in new_vehicles:
+        self.sumo.vehicle.setSpeedMode(new_vehicle_id, 117) # Disable safety checks for vehicle control
 
     terminated = self._fail_collision or self._episode_ended or self._success
     truncated = False # No truncate condition, timeout = fail
@@ -156,8 +164,10 @@ class VehicleEnv(gym.Env):
     )
 
   def process_action(self, action):
-    if action == ACTION_ACCELERATE:
-      self.sumo.vehicle.setAcceleration(AGENT_VEHICLE_ID, 0.5, 0.5)
+    if action == ACTION_NONE:
+      self.sumo.vehicle.setAcceleration(AGENT_VEHICLE_ID, 0.0, 0.5)
+    elif action == ACTION_ACCELERATE:
+      self.sumo.vehicle.setAcceleration(AGENT_VEHICLE_ID, 1.0, 0.5)
     elif action == ACTION_BRAKE:
       self.sumo.vehicle.setAcceleration(AGENT_VEHICLE_ID, -0.5, 0.5)
     elif action == ACTION_SWITCH_LANE_0:
@@ -215,39 +225,41 @@ class VehicleEnv(gym.Env):
       speed = speed * (speed > 0)
       observations = np.append(observations, np.array([x, y, speed, angle], dtype=np.float32))
 
-    observations = np.append(observations, np.zeros(shape=(4 * (MAX_TRAFFIC - len(vehicle_ids) + 1),), dtype=np.float32))
+    observations = np.append(observations, np.zeros(shape=(4 * (ABSOLUTE_MAX_TRAFFIC - len(vehicle_ids) + 1),), dtype=np.float32))
 
     return observations
 
 if __name__ == '__main__':
-  steps_limit = 500
+  steps_limit = 128 * 5
 
   register(
     id='Vehicle-Sumo-v1',
     entry_point=VehicleEnv,
   )
 
-  test_env = gym.make(
-    'Vehicle-Sumo-v1',
-    steps_limit=steps_limit,
-    collision_coef=10.0,
-    timeout_coef=10.0,
-    speed_coef=0.1,
-    success_coef=10.0,
-    sumo_config_file='sumo_files/intersection_vehicle.sumocfg',
-    render_mode='human'
-  )
+  # test_env = gym.make(
+  #   'Vehicle-Sumo-v1',
+  #   steps_limit=steps_limit,
+  #   max_traffic=10,
+  #   collision_coef=100.0,
+  #   timeout_coef=100.0,
+  #   speed_coef=0.1,
+  #   success_coef=10.0,
+  #   sumo_config_file='sumo_files/intersection_vehicle.sumocfg',
+  #   render_mode='human'
+  # )
 
-  print('Checking env')
-  check_env(test_env, warn=True)
-  print('Closing env')
-  test_env.close()
+  # print('Checking env')
+  # check_env(test_env, warn=True)
+  # print('Closing env')
+  # test_env.close()
 
   env = gym.make(
     'Vehicle-Sumo-v1',
     steps_limit=steps_limit,
-    collision_coef=10.0,
-    timeout_coef=10.0,
+    max_traffic=10,
+    collision_coef=100.0,
+    timeout_coef=100.0,
     speed_coef=0.1,
     success_coef=10.0,
     sumo_config_file='sumo_files/intersection_vehicle.sumocfg',
@@ -256,11 +268,12 @@ if __name__ == '__main__':
   obs, _ = env.reset()
 
   print('Running env')
-  for step in range(steps_limit // 5):
+  for step in range(steps_limit // 5 + 1):
     obs, reward, terminated, truncated, info = env.step(env.action_space.sample())
     done = terminated or truncated
-    print('obs=', obs, 'reward=', reward, 'done=', done, 'info=', info)
+    # print('obs=', obs, 'reward=', reward, 'done=', done, 'info=', info)
     if done:
+      print('info=', info, 'reward=', reward)
       break
   print('Closing env')
   env.close()

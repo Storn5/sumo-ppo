@@ -17,7 +17,7 @@ MIN_PHASE_LENGTH = 30 # 3 seconds is the default length of a yellow signal
 CAR_LENGTH = 5 # Default length of a car
 MIN_GAP = 2.5 # Default min gap of SUMO (see https://sumo.dlr.de/docs/Simulation/Safety.html)
 STEP_LENGTH = 0.1 # Length of a step in seconds, in this case 1 second = 10 steps
-LATERAL_RESOLUTION = 0.1 # Accuracy of side-to-side vehicle movement for lane changes
+LATERAL_RESOLUTION = 0.5 # Accuracy of side-to-side vehicle movement for lane changes
 VISUAL_DELAY = 200 # Sets the speed of the visualization for the user
 SUMO_FILE = 'sumo_env/sumo_files/intersection.sumocfg'
 

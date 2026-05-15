@@ -14,28 +14,29 @@ import sumo_env
 from sumo_env.vehicle_env import VehicleEnv
 
 # Env setup
-SIMULATION_STEPS_LIMIT = 500 # Steps per simulation (how many tenths of a second), but we only make an action every 5 steps (every 0.5 seconds)
-MODEL_STEPS_LIMIT = SIMULATION_STEPS_LIMIT // 5
-COLLISION_COEF = 10.0
-TIMEOUT_COEF = 10.0
+MODEL_STEPS_LIMIT = 128
+SIMULATION_STEPS_LIMIT = 5 * MODEL_STEPS_LIMIT # Steps per simulation (how many tenths of a second), but we only make an action every 5 steps (every 0.5 seconds)
+MAX_TRAFFIC = 10 # Max traffic for curriculum learning
+COLLISION_COEF = 100.0
+TIMEOUT_COEF = 100.0
 SPEED_COEF = 0.1
 SUCCESS_COEF = 10.0
 
 # Hyperparameters setup
-LEARNING_RATE = 0.0005
+LEARNING_RATE = 0.0002
 ENTROPY_COEF = 0.01
 GAMMA = 0.99
 LAMBDA = 0.95
 
-EPISODES_PER_MINIBATCH = 5 # How many episodes until each update
-NUM_CPUS = 1 # How many envs are trained in parallel
-TOTAL_BATCHES = 50 # How many updates to run in total for training
+EPISODES_PER_MINIBATCH = 4 # How many episodes until each update
+NUM_CPUS = 8 # How many envs are trained in parallel
+TOTAL_BATCHES = 200 # How many updates to run in total for training
 
 STEPS_PER_UPDATE = MODEL_STEPS_LIMIT * EPISODES_PER_MINIBATCH
 STEPS_PER_BATCH = NUM_CPUS * STEPS_PER_UPDATE # Real batch size (STEPS_PER_BATCH) has to be divisible by MINIBATCH_SIZE
-MINIBATCH_SIZE = STEPS_PER_BATCH // 32 # How many steps in each "minibatch" that PPO performs
+MINIBATCH_SIZE = STEPS_PER_BATCH // 16 # How many steps in each "minibatch" that PPO performs
 
-model_name = 'vehicle_ppo_lr0_0005_ec0_01_g99_l95'
+model_name = f'vehicle_ppo_lr{LEARNING_RATE}_ec{ENTROPY_COEF}_g{GAMMA}_l{LAMBDA}'.replace('.', '_')
 model_name = f'{model_name}_{datetime.now().strftime('%Y_%m_%dT%H_%M_%S')}'
 models_dir = f'models/{model_name}'
 logs_dir = f'logs/{model_name}'
@@ -45,15 +46,15 @@ if __name__ == '__main__':
     if not os.path.exists(folder):
       os.makedirs(folder)
 
-  # DummyVecEnv could be faster, because it creates only 1 process w/ multiple envs
-  vec_env = make_vec_env('Vehicle-Sumo-v1', n_envs=NUM_CPUS, seed=0, vec_env_cls=DummyVecEnv, env_kwargs={
+  vec_env = make_vec_env('Vehicle-Sumo-v1', n_envs=NUM_CPUS, seed=0, vec_env_cls=SubprocVecEnv, env_kwargs={
     'steps_limit': SIMULATION_STEPS_LIMIT,
+    'max_traffic': MAX_TRAFFIC,
     'collision_coef': COLLISION_COEF,
     'timeout_coef': TIMEOUT_COEF,
     'speed_coef': SPEED_COEF,
     'success_coef': SUCCESS_COEF,
     'render_mode': None,
-    'sumo_config_file': 'sumo_files/intersection_vehicle.sumocfg',
+    'sumo_config_file': 'sumo_env/sumo_files/intersection_vehicle.sumocfg',
   }, monitor_dir=logs_dir, monitor_kwargs={
     'info_keywords': ('episode_mean_speed',)
   })

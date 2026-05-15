@@ -5,17 +5,17 @@
 
 <routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
     <!-- Vehicles, persons and containers (sorted by depart) -->
-    <trip id="agent" depart="0.00" departSpeed="10.00" color="white" from="-E3" to="-E0"/>
-    <flow id="f_0" begin="0.00" end="1000.00" period="exp(0.08000000000000000167)" departSpeed="10.00" from="-E1" to="-E0"/>
-    <flow id="f_1" begin="0.00" end="1000.00" period="exp(0.08000000000000000167)" departSpeed="10.00" from="-E1" to="-E2"/>
-    <flow id="f_10" begin="0.00" end="1000.00" period="exp(0.08000000000000000167)" departSpeed="10.00" color="red" from="-E3" to="E1"/>
-    <flow id="f_11" begin="0.00" end="1000.00" period="exp(0.08000000000000000167)" departSpeed="10.00" color="red" from="-E3" to="-E0"/>
-    <flow id="f_2" begin="0.00" end="1000.00" period="exp(0.08000000000000000167)" departSpeed="10.00" from="-E1" to="E3"/>
-    <flow id="f_3" begin="0.00" end="1000.00" period="exp(0.08000000000000000167)" departSpeed="10.00" color="green" from="E2" to="E3"/>
-    <flow id="f_4" begin="0.00" end="1000.00" period="exp(0.08000000000000000167)" departSpeed="10.00" color="green" from="E2" to="-E0"/>
-    <flow id="f_5" begin="0.00" end="1000.00" period="exp(0.08000000000000000167)" departSpeed="10.00" color="green" from="E2" to="E1"/>
-    <flow id="f_6" begin="0.00" end="1000.00" period="exp(0.08000000000000000167)" departSpeed="10.00" color="blue" from="E0" to="E1"/>
-    <flow id="f_7" begin="0.00" end="1000.00" period="exp(0.08000000000000000167)" departSpeed="10.00" color="blue" from="E0" to="E3"/>
-    <flow id="f_8" begin="0.00" end="1000.00" period="exp(0.08000000000000000167)" departSpeed="10.00" color="blue" from="E0" to="-E2"/>
-    <flow id="f_9" begin="0.00" end="1000.00" period="exp(0.08000000000000000167)" departSpeed="10.00" color="red" from="-E3" to="-E2"/>
+    <trip id="agent" depart="0.00" departSpeed="1.00" color="white" from="-E3" to="-E0"/>
+    <flow id="f_0" begin="0.00" end="1000.00" period="exp(0.125)" departSpeed="10.00" from="-E1" to="-E0"/>
+    <flow id="f_1" begin="0.00" end="1000.00" period="exp(0.125)" departSpeed="10.00" from="-E1" to="-E2"/>
+    <flow id="f_10" begin="0.00" end="1000.00" period="exp(0.125)" departSpeed="10.00" color="red" from="-E3" to="E1"/>
+    <flow id="f_11" begin="0.00" end="1000.00" period="exp(0.125)" departSpeed="10.00" color="red" from="-E3" to="-E0"/>
+    <flow id="f_2" begin="0.00" end="1000.00" period="exp(0.125)" departSpeed="10.00" from="-E1" to="E3"/>
+    <flow id="f_3" begin="0.00" end="1000.00" period="exp(0.125)" departSpeed="10.00" color="green" from="E2" to="E3"/>
+    <flow id="f_4" begin="0.00" end="1000.00" period="exp(0.125)" departSpeed="10.00" color="green" from="E2" to="-E0"/>
+    <flow id="f_5" begin="0.00" end="1000.00" period="exp(0.125)" departSpeed="10.00" color="green" from="E2" to="E1"/>
+    <flow id="f_6" begin="0.00" end="1000.00" period="exp(0.125)" departSpeed="10.00" color="blue" from="E0" to="E1"/>
+    <flow id="f_7" begin="0.00" end="1000.00" period="exp(0.125)" departSpeed="10.00" color="blue" from="E0" to="E3"/>
+    <flow id="f_8" begin="0.00" end="1000.00" period="exp(0.125)" departSpeed="10.00" color="blue" from="E0" to="-E2"/>
+    <flow id="f_9" begin="0.00" end="1000.00" period="exp(0.125)" departSpeed="10.00" color="red" from="-E3" to="-E2"/>
 </routes>

@@ -14,8 +14,8 @@ import sumo_env
 from sumo_env.lights_env import LightsEnv
 
 # Env setup
-SIMULATION_STEPS_LIMIT = 9_000 # Steps per simulation (how many tenths of a second), but we only make an action every 60 steps (every 6 seconds)
-MODEL_STEPS_LIMIT = SIMULATION_STEPS_LIMIT // 60
+MODEL_STEPS_LIMIT = 150
+SIMULATION_STEPS_LIMIT = MODEL_STEPS_LIMIT * 60 # Steps per simulation (how many tenths of a second), but we only make an action every 60 steps (every 6 seconds)
 AWT_COEF = 0.05
 AQL_COEF = 0.05
 SPEED_COEF = 0.15
@@ -35,7 +35,7 @@ STEPS_PER_UPDATE = MODEL_STEPS_LIMIT * EPISODES_PER_MINIBATCH
 STEPS_PER_BATCH = NUM_CPUS * STEPS_PER_UPDATE # Real batch size (STEPS_PER_BATCH) has to be divisible by MINIBATCH_SIZE
 MINIBATCH_SIZE = STEPS_PER_BATCH // 32 # How many steps in each "minibatch" that PPO performs
 
-model_name = 'ppo_lr0_0005_ec0_01_g99_l95'
+model_name = f'lights_ppo_lr{LEARNING_RATE}_ec{ENTROPY_COEF}_g{GAMMA}_l{LAMBDA}'.replace('.', '_')
 model_name = f'{model_name}_{datetime.now().strftime('%Y_%m_%dT%H_%M_%S')}'
 models_dir = f'models/{model_name}'
 logs_dir = f'logs/{model_name}'
@@ -45,7 +45,6 @@ if __name__ == '__main__':
     if not os.path.exists(folder):
       os.makedirs(folder)
 
-  # DummyVecEnv could be faster, because it creates only 1 process w/ multiple envs
   vec_env = make_vec_env('Lights-Sumo-v1', n_envs=NUM_CPUS, seed=0, vec_env_cls=SubprocVecEnv, env_kwargs={
     'steps_limit': SIMULATION_STEPS_LIMIT,
     'awt_coef': AWT_COEF,
