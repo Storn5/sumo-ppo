@@ -14,11 +14,11 @@ import sumo_env
 # Env setup
 MODEL_STEPS_LIMIT = 128
 SIMULATION_STEPS_LIMIT = 5 * MODEL_STEPS_LIMIT # Steps per simulation (how many tenths of a second), but we only make an action every 5 steps (every 0.5 seconds)
-MAX_TRAFFIC = 20 # Max traffic for curriculum learning
+MAX_TRAFFIC = 15 # Max traffic for curriculum learning
 COLLISION_COEF = 100.0
 TIMEOUT_COEF = 100.0
-SPEED_COEF = 0.0
-SUCCESS_COEF = 100.0
+SPEED_COEF = 0.1
+SUCCESS_COEF = 50.0
 PROXIMITY_COEF = 5.0
 
 EPISODES_TO_RUN = 10 # How many episodes to demo

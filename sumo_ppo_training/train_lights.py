@@ -40,6 +40,12 @@ STEPS_PER_BATCH = NUM_CPUS * STEPS_PER_UPDATE # Real batch size (STEPS_PER_BATCH
 MINIBATCH_SIZE = STEPS_PER_BATCH // 32 # How many steps in each "minibatch" that PPO performs
 
 model_name = f'lights_ppo_lr{LEARNING_RATE}_ec{ENTROPY_COEF}_g{GAMMA}_l{LAMBDA}'.replace('.', '_')
+if ENT_COEF_DECAY:
+  model_name.replace('ppo', f'ppo_ecdecay_{ENT_COEF_DECAY}'.replace('.', '_'))
+if CLIP_RANGE_DECAY:
+  model_name.replace('ppo', f'ppo_crdecay_{CLIP_RANGE_DECAY}'.replace('.', '_'))
+if LR_DECAY:
+  model_name.replace('ppo', f'ppo_lrdecay_{LR_DECAY}'.replace('.', '_'))
 model_name = f'{model_name}_{datetime.now().strftime('%Y_%m_%dT%H_%M_%S')}'
 models_dir = f'models/{model_name}'
 logs_dir = f'logs/{model_name}'
