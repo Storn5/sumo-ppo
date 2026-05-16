@@ -27,6 +27,10 @@ ENTROPY_COEF = 0.01
 GAMMA = 0.99
 LAMBDA = 0.95
 
+ENT_COEF_DECAY = 0.0
+CLIP_RANGE_DECAY = 0.0
+LR_DECAY = 0.0
+
 EPISODES_PER_MINIBATCH = 2 # How many episodes until each update
 NUM_CPUS = 8 # How many envs are trained in parallel
 TOTAL_BATCHES = 100 # How many updates to run in total for training
@@ -53,7 +57,7 @@ if __name__ == '__main__':
     'success_coef': SUCCESS_COEF,
     'render_mode': None,
   }, monitor_dir=logs_dir, monitor_kwargs={
-    'info_keywords': ('total_departed', 'episode_mean_waiting_time', 'episode_mean_queue_length', 'episode_mean_speed')
+    'info_keywords': ('total_arrived', 'episode_mean_waiting_time', 'episode_mean_queue_length', 'episode_mean_speed')
   })
 
   logger = configure(logs_dir, ['csv'])
@@ -65,4 +69,11 @@ if __name__ == '__main__':
   for i in range(1, TOTAL_BATCHES + 1):
     model.learn(total_timesteps=STEPS_PER_BATCH, reset_num_timesteps=False, tb_log_name=model_name, progress_bar=True)
     model.save(f'{models_dir}/{STEPS_PER_BATCH * i}')
+    if ENT_COEF_DECAY:
+      model.ent_coef *= ENT_COEF_DECAY
+    if CLIP_RANGE_DECAY:
+      model.clip_range *= CLIP_RANGE_DECAY
+    if LR_DECAY:
+      model.learning_rate *= LR_DECAY
+
   vec_env.close()

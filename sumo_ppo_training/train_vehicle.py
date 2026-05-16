@@ -16,17 +16,22 @@ from sumo_env.vehicle_env import VehicleEnv
 # Env setup
 MODEL_STEPS_LIMIT = 128
 SIMULATION_STEPS_LIMIT = 5 * MODEL_STEPS_LIMIT # Steps per simulation (how many tenths of a second), but we only make an action every 5 steps (every 0.5 seconds)
-MAX_TRAFFIC = 10 # Max traffic for curriculum learning
+MAX_TRAFFIC = 15 # Max traffic for curriculum learning
 COLLISION_COEF = 100.0
 TIMEOUT_COEF = 100.0
 SPEED_COEF = 0.1
-SUCCESS_COEF = 10.0
+SUCCESS_COEF = 50.0
+PROXIMITY_COEF = 5.0
 
 # Hyperparameters setup
 LEARNING_RATE = 0.0002
-ENTROPY_COEF = 0.01
+ENTROPY_COEF = 0.05
 GAMMA = 0.99
 LAMBDA = 0.95
+
+ENT_COEF_DECAY = 0.0
+CLIP_RANGE_DECAY = 0.0
+LR_DECAY = 0.0
 
 EPISODES_PER_MINIBATCH = 4 # How many episodes until each update
 NUM_CPUS = 8 # How many envs are trained in parallel
@@ -53,10 +58,11 @@ if __name__ == '__main__':
     'timeout_coef': TIMEOUT_COEF,
     'speed_coef': SPEED_COEF,
     'success_coef': SUCCESS_COEF,
+    'proximity_coef': PROXIMITY_COEF,
     'render_mode': None,
     'sumo_config_file': 'sumo_env/sumo_files/intersection_vehicle.sumocfg',
   }, monitor_dir=logs_dir, monitor_kwargs={
-    'info_keywords': ('episode_mean_speed',)
+    'info_keywords': ('episode_mean_speed', 'success')
   })
 
   logger = configure(logs_dir, ['csv'])
@@ -68,4 +74,11 @@ if __name__ == '__main__':
   for i in range(1, TOTAL_BATCHES + 1):
     model.learn(total_timesteps=STEPS_PER_BATCH, reset_num_timesteps=False, tb_log_name=model_name, progress_bar=True)
     model.save(f'{models_dir}/{STEPS_PER_BATCH * i}')
+    if ENT_COEF_DECAY:
+      model.ent_coef *= ENT_COEF_DECAY
+    if CLIP_RANGE_DECAY:
+      model.clip_range *= CLIP_RANGE_DECAY
+    if LR_DECAY:
+      model.learning_rate *= LR_DECAY
+
   vec_env.close()

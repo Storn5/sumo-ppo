@@ -44,7 +44,7 @@ class LightsEnv(gym.Env):
     self._cur_step = 0
     self._cur_episode = 0
     self._episode_ended = False
-    self.num_departed_vehicles = 0
+    self.num_arrived_vehicles = 0
     self.episode_mean_speed = 0
     self.episode_mean_waiting_time = 0
     self.episode_mean_queue_length = 0
@@ -82,7 +82,7 @@ class LightsEnv(gym.Env):
     if self._cur_episode != 0:
       self.close()
     self._cur_episode += 1
-    self.num_departed_vehicles = 0
+    self.num_arrived_vehicles = 0
     self.episode_mean_speed = 0
     self.episode_mean_waiting_time = 0
     self.episode_mean_queue_length = 0
@@ -136,7 +136,7 @@ class LightsEnv(gym.Env):
       for _ in range(MIN_PHASE_LENGTH):
         self.sumo.simulationStep()
 
-        self.num_departed_vehicles += self.sumo.simulation.getDepartedNumber()
+        self.num_arrived_vehicles += self.sumo.simulation.getArrivedNumber()
 
         self._cur_step += 1
         if self._cur_step > self.steps_limit:
@@ -167,7 +167,7 @@ class LightsEnv(gym.Env):
     awt_reward = -self.awt_coef * info['mean_waiting_time']
     aql_reward = -self.aql_coef * info['total_queued']
     speed_reward = self.speed_coef * info['mean_speed']
-    success_reward = self.success_coef * info['total_departed']
+    success_reward = self.success_coef * info['total_arrived']
     # print(f'AWT Reward: {awt_reward}, AQL Reward: {aql_reward}, Speed Reward: {speed_reward}, Success Reward: {success_reward}')
     return awt_reward + aql_reward + speed_reward + success_reward
 
@@ -190,7 +190,7 @@ class LightsEnv(gym.Env):
       'mean_speed': mean_speed,
       'total_queued': queue_length,
       'mean_waiting_time': mean_waiting_time,
-      'total_departed': self.num_departed_vehicles,
+      'total_arrived': self.num_arrived_vehicles,
     }
 
     if done:

@@ -14,15 +14,16 @@ import sumo_env
 # Env setup
 MODEL_STEPS_LIMIT = 128
 SIMULATION_STEPS_LIMIT = 5 * MODEL_STEPS_LIMIT # Steps per simulation (how many tenths of a second), but we only make an action every 5 steps (every 0.5 seconds)
-MAX_TRAFFIC = 10 # Max traffic for curriculum learning
+MAX_TRAFFIC = 20 # Max traffic for curriculum learning
 COLLISION_COEF = 100.0
 TIMEOUT_COEF = 100.0
-SPEED_COEF = 0.1
-SUCCESS_COEF = 10.0
+SPEED_COEF = 0.0
+SUCCESS_COEF = 100.0
+PROXIMITY_COEF = 5.0
 
-EPISODES_TO_RUN = 3 # How many episodes to demo
+EPISODES_TO_RUN = 10 # How many episodes to demo
 
-model_to_load = 'models/vehicle_ppo_lr0_0002_ec0_01_g0_99_l0_95_2026_05_15T16_04_24/561152.zip'
+model_to_load = 'models/vehicle_ppo_lr0_0002_ec0_05_g0_99_l0_95_2026_05_16T18_02_33/720896.zip'
 
 if __name__ == '__main__':
   vec_env = make_vec_env('Vehicle-Sumo-v1', n_envs=8, seed=0, vec_env_cls=SubprocVecEnv, env_kwargs={
@@ -32,6 +33,7 @@ if __name__ == '__main__':
     'timeout_coef': TIMEOUT_COEF,
     'speed_coef': SPEED_COEF,
     'success_coef': SUCCESS_COEF,
+    'proximity_coef': PROXIMITY_COEF,
     'render_mode': 'human',
     'sumo_config_file': 'sumo_env/sumo_files/intersection_vehicle.sumocfg',
   })

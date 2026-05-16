@@ -50,7 +50,7 @@ if __name__ == '__main__':
     'success_coef': SUCCESS_COEF,
     'render_mode': None,
   }, monitor_dir=logs_dir, monitor_kwargs={
-    'info_keywords': ('total_departed', 'episode_mean_waiting_time', 'episode_mean_queue_length', 'episode_mean_speed')
+    'info_keywords': ('total_arrived', 'episode_mean_waiting_time', 'episode_mean_queue_length', 'episode_mean_speed')
   })
 
   logger = configure(logs_dir, ['csv'])
