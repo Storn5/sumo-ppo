@@ -12,6 +12,7 @@ from stable_baselines3.common.logger import configure
 
 import sumo_env
 from sumo_env.lights_env import LightsEnv
+from ppo_levy_flight import LevyPPO
 
 # Env setup
 MODEL_STEPS_LIMIT = 150
@@ -30,6 +31,7 @@ LAMBDA = 0.95
 ENT_COEF_DECAY = 0.0
 CLIP_RANGE_DECAY = 0.0
 LR_DECAY = 0.0
+USE_LEVY = False
 
 EPISODES_PER_MINIBATCH = 2 # How many episodes until each update
 NUM_CPUS = 8 # How many envs are trained in parallel
@@ -41,11 +43,13 @@ MINIBATCH_SIZE = STEPS_PER_BATCH // 32 # How many steps in each "minibatch" that
 
 model_name = f'lights_ppo_lr{LEARNING_RATE}_ec{ENTROPY_COEF}_g{GAMMA}_l{LAMBDA}'.replace('.', '_')
 if ENT_COEF_DECAY:
-  model_name.replace('ppo', f'ppo_ecdecay_{ENT_COEF_DECAY}'.replace('.', '_'))
+  model_name = model_name.replace('ppo', f'ppo_ecdecay_{ENT_COEF_DECAY}'.replace('.', '_'))
 if CLIP_RANGE_DECAY:
-  model_name.replace('ppo', f'ppo_crdecay_{CLIP_RANGE_DECAY}'.replace('.', '_'))
+  model_name = model_name.replace('ppo', f'ppo_crdecay_{CLIP_RANGE_DECAY}'.replace('.', '_'))
 if LR_DECAY:
-  model_name.replace('ppo', f'ppo_lrdecay_{LR_DECAY}'.replace('.', '_'))
+  model_name = model_name.replace('ppo', f'ppo_lrdecay_{LR_DECAY}'.replace('.', '_'))
+if USE_LEVY:
+  model_name = model_name.replace('ppo', 'levyppo')
 model_name = f'{model_name}_{datetime.now().strftime('%Y_%m_%dT%H_%M_%S')}'
 models_dir = f'models/{model_name}'
 logs_dir = f'logs/{model_name}'
@@ -70,6 +74,9 @@ if __name__ == '__main__':
 
   model = PPO('MlpPolicy', vec_env, device='cpu', verbose=0, tensorboard_log=logs_dir, n_steps=STEPS_PER_UPDATE, batch_size=MINIBATCH_SIZE,
     learning_rate=LEARNING_RATE, ent_coef=ENTROPY_COEF, gamma=GAMMA, gae_lambda=LAMBDA)
+  if USE_LEVY:
+    model = LevyPPO('MlpPolicy', vec_env, device='cpu', verbose=0, tensorboard_log=logs_dir, n_steps=STEPS_PER_UPDATE, batch_size=MINIBATCH_SIZE,
+      learning_rate=LEARNING_RATE, ent_coef=ENTROPY_COEF, gamma=GAMMA, gae_lambda=LAMBDA)
   model.set_logger(logger)
 
   for i in range(1, TOTAL_BATCHES + 1):
