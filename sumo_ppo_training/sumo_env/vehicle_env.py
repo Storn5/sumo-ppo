@@ -20,12 +20,15 @@ ACTION_LENGTH = 5 # 0.5 seconds for each agent action
 STEP_LENGTH = 0.1 # Length of a step in seconds, in this case 1 second = 10 steps
 LATERAL_RESOLUTION = 0.2 # Accuracy of side-to-side vehicle movement for lane changes
 VISUAL_DELAY = 200 # Sets the speed of the visualization for the user
+DIAGONAL = np.sqrt(2) * 100.0
+DANGER_THRESHOLD = 0.15 # Distance at which vehicle is close enough to agent for penalties
+MAX_SPEED = 25.0
 
 class VehicleEnv(gym.Env):
   """Gymnasium environment using the SUMO traffic simulator to control a vehicle at a 4-way signalized intersection"""
   metadata = {'render_modes': ['human', 'rgb_array'], 'render_fps': 60}
 
-  def __init__(self, steps_limit, max_traffic, collision_coef, timeout_coef, speed_coef, success_coef, sumo_config_file, render_mode=None, render_resolution=(1920, 1080)):
+  def __init__(self, steps_limit, max_traffic, collision_coef, timeout_coef, speed_coef, success_coef, proximity_coef, sumo_config_file, render_mode=None, render_resolution=(1920, 1080)):
     super().__init__()
     self.steps_limit = steps_limit
     self.max_traffic = max_traffic
@@ -33,14 +36,15 @@ class VehicleEnv(gym.Env):
     self.timeout_coef = timeout_coef
     self.speed_coef = speed_coef
     self.success_coef = success_coef
+    self.proximity_coef = proximity_coef
     self.sumo_config_file = sumo_config_file
     self.render_mode = render_mode
     self.render_resolution = render_resolution
 
-    # 5 actions: do nothing, accelerate, brake, go to left lane, go to right lane
-    self.action_space = spaces.Discrete(5)
+    # 5 actions: do nothing, accelerate, brake
+    self.action_space = spaces.Discrete(3)
     # One-hot encoded destinations (3 possible), ego and traffic vehicle positions, orientations and speeds
-    self.observation_space = spaces.Box(low=0, high=1, shape=(3 + 4 * (1 + ABSOLUTE_MAX_TRAFFIC),), dtype=np.float32)
+    self.observation_space = spaces.Box(low=-1, high=1, shape=(4 + 5 * (ABSOLUTE_MAX_TRAFFIC),), dtype=np.float32)
     self.reward_space = spaces.Box(low=-np.inf, high=np.inf, shape=(1,), dtype=np.float32)
 
     self.sumo = None
@@ -92,6 +96,7 @@ class VehicleEnv(gym.Env):
       '--step-length', str(STEP_LENGTH),
       '--lateral-resolution', str(LATERAL_RESOLUTION),
       '--no-step-log',
+      '--no-warnings',
       '--random',
       '--error-log', '/dev/null',
       '--max-num-vehicles', str(self.max_traffic + 1),
@@ -153,7 +158,7 @@ class VehicleEnv(gym.Env):
     truncated = False # No truncate condition, timeout = fail
     info = self.get_info(terminated)
     observations = self.get_normalized_observation(info, terminated)
-    reward = self.get_reward(info)
+    reward = self.get_reward(observations, info)
 
     return (
       observations,
@@ -167,21 +172,68 @@ class VehicleEnv(gym.Env):
     if action == ACTION_NONE:
       self.sumo.vehicle.setAcceleration(AGENT_VEHICLE_ID, 0.0, 0.5)
     elif action == ACTION_ACCELERATE:
-      self.sumo.vehicle.setAcceleration(AGENT_VEHICLE_ID, 1.0, 0.5)
+      self.sumo.vehicle.setAcceleration(AGENT_VEHICLE_ID, 1.5, 0.5)
     elif action == ACTION_BRAKE:
-      self.sumo.vehicle.setAcceleration(AGENT_VEHICLE_ID, -0.5, 0.5)
+      self.sumo.vehicle.setAcceleration(AGENT_VEHICLE_ID, -4.0, 0.5)
     elif action == ACTION_SWITCH_LANE_0:
       self.sumo.vehicle.changeLane(AGENT_VEHICLE_ID, 0, 0.5)
     elif action == ACTION_SWITCH_LANE_1:
       self.sumo.vehicle.changeLane(AGENT_VEHICLE_ID, 1, 0.5)
 
-  def get_reward(self, info):
-    collision_reward = -self.collision_coef * self._fail_collision
-    timeout_reward = -self.timeout_coef * self._episode_ended
-    speed_reward = self.speed_coef * info['speed']
+  def get_reward(self, observations, info):
+    ego_speed = info['speed'] / MAX_SPEED
+    collision_penalty = -self.collision_coef * self._fail_collision
+    timeout_penalty = -self.timeout_coef * self._episode_ended
+    speed_reward = self.speed_coef * ego_speed
     success_reward = self.success_coef * self._success
-    # print(f'Collision Reward: {collision_reward}, Timeout Reward: {timeout_reward}, Speed Reward: {speed_reward}, Success Reward: {success_reward}')
-    return collision_reward + timeout_reward + speed_reward + success_reward
+    proximity_penalty = 0.0
+
+    # Skip the first 4 elements (ego data)
+    traffic_obs = observations[4:]
+    # Loop through each vehicle's observations
+    for i in range(0, len(traffic_obs), 5):
+      rel_x = traffic_obs[i]
+      rel_y = traffic_obs[i+1]
+      speed = traffic_obs[i+2]
+      rel_angle = traffic_obs[i+3]
+      dist = traffic_obs[i+4]
+
+      # Skip vehicles that are too far
+      if dist >= DANGER_THRESHOLD:
+        continue
+
+      # Check if the vehicle is aiming roughly at the agent (within 45 degrees)
+      # Find vector pointing from the target vehicle TO the agent
+      # Agent is at (0.5, 0.5)
+      v_to_agent_x = 0.5 - rel_x
+      v_to_agent_y = 0.5 - rel_y
+      # Find the angle of this "line of sight" vector in radians
+      bearing_to_agent = np.atan2(v_to_agent_y, v_to_agent_x)
+      # Convert the target's relative angle back to radian
+      target_heading_rad = (rel_angle - 0.5) * 2 * np.pi
+      # Find the difference between where the car is looking vs where the agent is
+      heading_to_bearing_diff = target_heading_rad - bearing_to_agent
+      # Normalize to [-pi, pi]
+      heading_to_bearing_diff = (heading_to_bearing_diff + np.pi) % (2 * np.pi) - np.pi
+      # If the angle difference is within 45 deg, it's aimed at the agent
+      is_heading_towards_agent = np.abs(heading_to_bearing_diff) < (np.pi / 4)
+
+      # Ego is at (0.5, 0.5). If rel_y > 0.5, the car is in front of the agent
+      is_in_front = rel_y > 0.5 and np.abs(rel_x - 0.5) < 0.03
+      # print(f'v_to_agent_x: {v_to_agent_x}, v_to_agent_y: {v_to_agent_y}')
+      # print(f'Rel X: {rel_x}, Rel Y: {rel_y}')
+      # print(f'bearing_to_agent: {bearing_to_agent}, target_heading_rad: {target_heading_rad}, heading_to_bearing_diff: {heading_to_bearing_diff}')
+
+      if is_heading_towards_agent or (is_in_front and ego_speed > 0.01):
+        proximity_penalty += -self.proximity_coef * (1.0 - (dist / DANGER_THRESHOLD))**2
+        # print(f'Heading to agent: {is_heading_towards_agent}, In front: {is_in_front}, proximity_penalty: {proximity_penalty}')
+
+      # Remove speed reward if we're heading for a collision
+      if is_in_front:
+        speed_reward = 0.0
+
+    # print(f'Collision Penalty: {collision_penalty}, Timeout Penalty: {timeout_penalty}, Speed Reward: {speed_reward}, Success Reward: {success_reward}, Proximity Penalty: {proximity_penalty}')
+    return collision_penalty + timeout_penalty + speed_reward + success_reward + proximity_penalty
 
   def get_info(self, done=False):
     info = {
@@ -197,6 +249,7 @@ class VehicleEnv(gym.Env):
     else:
       episode_steps = self._cur_step // ACTION_LENGTH
       info['episode_mean_speed'] = self.episode_mean_speed / episode_steps
+      info['success'] = self._success
 
     return info
 
@@ -205,11 +258,12 @@ class VehicleEnv(gym.Env):
       return np.array([], dtype=np.float32)
 
     # Ego vehicle
-    x, y = self.sumo.vehicle.getPosition(AGENT_VEHICLE_ID)
-    x, y = x / 200.0 + 0.5, y / 200.0 + 0.5
-    angle = self.sumo.vehicle.getAngle(AGENT_VEHICLE_ID) / 360.0
+    ego_x, ego_y = self.sumo.vehicle.getPosition(AGENT_VEHICLE_ID)
+    ego_angle = self.sumo.vehicle.getAngle(AGENT_VEHICLE_ID)
+    ego_angle_rad = np.radians(ego_angle)
     observations = np.array(
-      [self.dest == '-E0', self.dest == 'E1', self.dest == '-E2', x, y, info['speed'] / 20.0, angle],
+      # First one-hot encoded destination, then own speed
+      [self.dest == '-E0', self.dest == 'E1', self.dest == '-E2', info['speed'] / MAX_SPEED],
       dtype=np.float32
     )
 
@@ -219,13 +273,32 @@ class VehicleEnv(gym.Env):
       if vehicle_id == AGENT_VEHICLE_ID:
         continue
       x, y = self.sumo.vehicle.getPosition(vehicle_id)
-      x, y = x / 200.0 + 0.5, y / 200.0 + 0.5
-      angle = self.sumo.vehicle.getAngle(vehicle_id) / 360.0
-      speed = np.abs(self.sumo.vehicle.getSpeed(vehicle_id)) / 20.0
-      speed = speed * (speed > 0)
-      observations = np.append(observations, np.array([x, y, speed, angle], dtype=np.float32))
 
-    observations = np.append(observations, np.zeros(shape=(4 * (ABSOLUTE_MAX_TRAFFIC - len(vehicle_ids) + 1),), dtype=np.float32))
+      # Delta position
+      dx = x - ego_x
+      dy = y - ego_y
+
+      # Distance
+      dist = np.sqrt(dx ** 2 + dy ** 2) / DIAGONAL
+
+      # Rotate coordinates so they are relative to the Agent's heading
+      rel_x = (dx * np.cos(ego_angle_rad) - dy * np.sin(ego_angle_rad)) / (2*DIAGONAL) + 0.5
+      rel_y = (dx * np.sin(ego_angle_rad) + dy * np.cos(ego_angle_rad)) / (2*DIAGONAL) + 0.5
+
+      # Relative angle to agent
+      angle = self.sumo.vehicle.getAngle(vehicle_id)
+      angle_diff = angle - ego_angle
+      # Normalize difference to [-180, 180] degrees
+      angle_diff = (angle_diff + 180) % 360 - 180
+      # Scale to [0, 1]
+      rel_angle = (angle_diff / 360.0) + 0.5
+
+      speed = np.abs(self.sumo.vehicle.getSpeed(vehicle_id)) / MAX_SPEED
+      speed = speed * (speed > 0)
+      observations = np.append(observations, np.array([rel_x, rel_y, speed, rel_angle, dist], dtype=np.float32))
+
+    # Pad empty slots with 1s (maximum distance away)
+    observations = np.append(observations, np.ones(shape=(5 * (ABSOLUTE_MAX_TRAFFIC - len(vehicle_ids) + 1),), dtype=np.float32))
 
     return observations
 
@@ -245,6 +318,7 @@ if __name__ == '__main__':
   #   timeout_coef=100.0,
   #   speed_coef=0.1,
   #   success_coef=10.0,
+  #   proximity_coef=10.0,
   #   sumo_config_file='sumo_files/intersection_vehicle.sumocfg',
   #   render_mode='human'
   # )
@@ -261,7 +335,8 @@ if __name__ == '__main__':
     collision_coef=100.0,
     timeout_coef=100.0,
     speed_coef=0.1,
-    success_coef=10.0,
+    success_coef=100.0,
+    proximity_coef=5.0,
     sumo_config_file='sumo_files/intersection_vehicle.sumocfg',
     render_mode='human'
   )
@@ -269,7 +344,7 @@ if __name__ == '__main__':
 
   print('Running env')
   for step in range(steps_limit // 5 + 1):
-    obs, reward, terminated, truncated, info = env.step(env.action_space.sample())
+    obs, reward, terminated, truncated, info = env.step(1)#env.action_space.sample())
     done = terminated or truncated
     # print('obs=', obs, 'reward=', reward, 'done=', done, 'info=', info)
     if done:

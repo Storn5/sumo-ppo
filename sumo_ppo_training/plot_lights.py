@@ -50,7 +50,7 @@ def plot_lights_episode_metrics(log_folder, title='Episode Metrics'):
   metrics = [
     ('episode_mean_speed', 'Average Speed, m/s', 'blue'),
     ('episode_mean_waiting_time', 'Average Waiting Time, s', 'red'),
-    ('total_departed', 'Departed Vehicles', 'green'),
+    ('total_arrived', 'Total Successful Vehicles', 'green'),
     ('episode_mean_queue_length', 'Average Queue Length', 'purple'),
   ]
 

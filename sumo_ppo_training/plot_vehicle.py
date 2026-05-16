@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 from stable_baselines3.common.results_plotter import load_results, ts2xy
 
-logs_dir = 'logs/vehicle_ppo_lr0_0005_ec0_01_g99_l95_2026_05_15T15_47_42'
+logs_dir = 'logs/vehicle_ppo_lr0_0002_ec0_05_g0_99_l0_95_2026_05_16T16_47_53'
 
 def plot_learning_curves(log_folder, title='Learning Curves'):
   progress = pd.read_csv(f'{logs_dir}/progress.csv')
@@ -49,20 +49,24 @@ def plot_lights_episode_metrics(log_folder, title='Episode Metrics'):
 
   metrics = [
     ('episode_mean_speed', 'Average Speed, m/s', 'blue'),
+    ('success', 'Success Rate', 'green'),
   ]
 
-  fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(12, 8), sharex=True)
+  fig, axes = plt.subplots(nrows=2, ncols=1, figsize=(12, 8), sharex=True)
+  axes = axes.flatten()
   fig.suptitle(title, fontsize=16)
 
   for i, (column, label, color) in enumerate(metrics):
-    ax = axes
+    ax = axes[i]
     ax.plot(x, monitor[column], label=label, color=color)
     ax.set_title(label)
     ax.grid(True, linestyle='--', alpha=0.6)
 
     ax.set_ylabel(label)
 
-    ax.set_xlabel('Sim Steps, thousands')
+    # Only the bottom plots need the X-label if sharing X-axis
+    if i >= 1:
+      ax.set_xlabel('Sim Steps, thousands')
 
   plt.show()
 
