@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 from stable_baselines3.common.results_plotter import load_results, ts2xy
 
-logs_dir = 'logs/ppo_lr0_001_ec0_02_g99_l95_2026_05_12T15_40_07'
+logs_dir = 'logs/lights5_ppo_lr0_0005_ec0_01_g0_99_l0_95_2026_05_18T15_04_14'
 
 def plot_learning_curves(log_folder, title='Learning Curves'):
   progress = pd.read_csv(f'{logs_dir}/progress.csv')
