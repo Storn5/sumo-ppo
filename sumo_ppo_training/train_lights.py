@@ -17,6 +17,7 @@ from ppo_levy_flight import LevyPPO
 # Env setup
 MODEL_STEPS_LIMIT = 150
 SIMULATION_STEPS_LIMIT = MODEL_STEPS_LIMIT * 60 # Steps per simulation (how many tenths of a second), but we only make an action every 60 steps (every 6 seconds)
+MAX_TRAFFIC = 5 # Max traffic for curriculum learning
 AWT_COEF = 0.05
 AQL_COEF = 0.05
 SPEED_COEF = 0.15
@@ -41,7 +42,7 @@ STEPS_PER_UPDATE = MODEL_STEPS_LIMIT * EPISODES_PER_MINIBATCH
 STEPS_PER_BATCH = NUM_CPUS * STEPS_PER_UPDATE # Real batch size (STEPS_PER_BATCH) has to be divisible by MINIBATCH_SIZE
 MINIBATCH_SIZE = STEPS_PER_BATCH // 32 # How many steps in each "minibatch" that PPO performs
 
-model_name = f'lights_ppo_lr{LEARNING_RATE}_ec{ENTROPY_COEF}_g{GAMMA}_l{LAMBDA}'.replace('.', '_')
+model_name = f'lights{MAX_TRAFFIC}_ppo_lr{LEARNING_RATE}_ec{ENTROPY_COEF}_g{GAMMA}_l{LAMBDA}'.replace('.', '_')
 if ENT_COEF_DECAY:
   model_name = model_name.replace('ppo', f'ppo_ecdecay_{ENT_COEF_DECAY}'.replace('.', '_'))
 if CLIP_RANGE_DECAY:
@@ -61,10 +62,12 @@ if __name__ == '__main__':
 
   vec_env = make_vec_env('Lights-Sumo-v1', n_envs=NUM_CPUS, seed=0, vec_env_cls=SubprocVecEnv, env_kwargs={
     'steps_limit': SIMULATION_STEPS_LIMIT,
+    'max_traffic': MAX_TRAFFIC,
     'awt_coef': AWT_COEF,
     'aql_coef': AQL_COEF,
     'speed_coef': SPEED_COEF,
     'success_coef': SUCCESS_COEF,
+    'sumo_config_file': 'sumo_env/sumo_files/intersection.sumocfg',
     'render_mode': None,
   }, monitor_dir=logs_dir, monitor_kwargs={
     'info_keywords': ('total_arrived', 'episode_mean_waiting_time', 'episode_mean_queue_length', 'episode_mean_speed')

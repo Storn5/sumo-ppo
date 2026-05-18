@@ -219,7 +219,7 @@ class VehicleEnv(gym.Env):
       is_heading_towards_agent = np.abs(heading_to_bearing_diff) < (np.pi / 4)
 
       # Ego is at (0.5, 0.5). If rel_y > 0.5, the car is in front of the agent
-      is_in_front = rel_y > 0.5 and np.abs(rel_x - 0.5) < 0.03
+      is_in_front = rel_y > 0.5 and np.abs(rel_x - 0.5) < 0.02
       # print(f'v_to_agent_x: {v_to_agent_x}, v_to_agent_y: {v_to_agent_y}')
       # print(f'Rel X: {rel_x}, Rel Y: {rel_y}')
       # print(f'bearing_to_agent: {bearing_to_agent}, target_heading_rad: {target_heading_rad}, heading_to_bearing_diff: {heading_to_bearing_diff}')
@@ -331,7 +331,7 @@ if __name__ == '__main__':
   env = gym.make(
     'Vehicle-Sumo-v1',
     steps_limit=steps_limit,
-    max_traffic=10,
+    max_traffic=1,
     collision_coef=100.0,
     timeout_coef=100.0,
     speed_coef=0.1,
@@ -344,7 +344,7 @@ if __name__ == '__main__':
 
   print('Running env')
   for step in range(steps_limit // 5 + 1):
-    obs, reward, terminated, truncated, info = env.step(1)#env.action_space.sample())
+    obs, reward, terminated, truncated, info = env.step(env.action_space.sample())
     done = terminated or truncated
     # print('obs=', obs, 'reward=', reward, 'done=', done, 'info=', info)
     if done:

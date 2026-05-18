@@ -25,13 +25,15 @@ class LightsEnv(gym.Env):
   """Gymnasium environment using the SUMO traffic simulator to control a traffic light at a 4-way intersection"""
   metadata = {'render_modes': ['human', 'rgb_array'], 'render_fps': 60}
 
-  def __init__(self, steps_limit, awt_coef, aql_coef, speed_coef, success_coef, render_mode=None, render_resolution=(1920, 1080)):
+  def __init__(self, steps_limit, max_traffic, awt_coef, aql_coef, speed_coef, success_coef, sumo_config_file, render_mode=None, render_resolution=(1920, 1080)):
     super().__init__()
     self.steps_limit = steps_limit
+    self.max_traffic = max_traffic
     self.awt_coef = awt_coef
     self.aql_coef = aql_coef
     self.speed_coef = speed_coef
     self.success_coef = success_coef
+    self.sumo_config_file = sumo_config_file
     self.render_mode = render_mode
     self.render_resolution = render_resolution
 
@@ -42,7 +44,6 @@ class LightsEnv(gym.Env):
     self.sumo = None
     self.label = os.getpid()
     self._cur_step = 0
-    self._cur_episode = 0
     self._episode_ended = False
     self.num_arrived_vehicles = 0
     self.episode_mean_speed = 0
@@ -79,9 +80,6 @@ class LightsEnv(gym.Env):
     super().reset(seed=seed, options=options)
     self._cur_step = 0
     self._episode_ended = False
-    if self._cur_episode != 0:
-      self.close()
-    self._cur_episode += 1
     self.num_arrived_vehicles = 0
     self.episode_mean_speed = 0
     self.episode_mean_waiting_time = 0
@@ -90,12 +88,13 @@ class LightsEnv(gym.Env):
     # Set up SUMO command
     sumo_cmd = [
       self._sumo_binary,
-      '-c', SUMO_FILE,
+      '-c', self.sumo_config_file,
       '--step-length', str(STEP_LENGTH),
       '--lateral-resolution', str(LATERAL_RESOLUTION),
       '--no-step-log',
       '--no-warnings',
-      '--random'
+      '--random',
+      '--max-num-vehicles', str(self.max_traffic)
     ]
     if self.render_mode is not None:
       sumo_cmd.extend(['--delay', str(VISUAL_DELAY)])
@@ -103,9 +102,14 @@ class LightsEnv(gym.Env):
       if self.render_mode == 'rgb_array':
         sumo_cmd.extend(['--window-size', f'{self.render_resolution[0]},{self.render_resolution[1]}'])
 
-    # Start SUMO sim
-    traci.start(sumo_cmd, port=self.label % 65536, label=self.label)
-    self.sumo = traci.getConnection(self.label)
+    if self.sumo is None:
+      # Start SUMO sim only the first time
+      traci.start(sumo_cmd, port=self.label % 65536, label=self.label)
+      self.sumo = traci.getConnection(self.label)
+    else:
+      # Just reload the simulation state
+      self.sumo.load(sumo_cmd[1:])
+
     if self.render_mode is not None:
       self.sumo.gui.setSchema(traci.gui.DEFAULT_VIEW, 'real world')
 
@@ -221,28 +225,32 @@ if __name__ == '__main__':
     entry_point=LightsEnv,
   )
 
-  # test_env = gym.make(
-  #   'Lights-Sumo-v1',
-  #   steps_limit=steps_limit,
-  #   awt_coef=0.25,
-  #   aql_coef=0.25,
-  #   speed_coef=0.25,
-  #   success_coef=0.25,
-  #   render_mode='human'
-  # )
+  test_env = gym.make(
+    'Lights-Sumo-v1',
+    steps_limit=steps_limit,
+    max_traffic=20,
+    awt_coef=0.25,
+    aql_coef=0.25,
+    speed_coef=0.25,
+    success_coef=0.25,
+    sumo_config_file='sumo_files/intersection.sumocfg',
+    render_mode='human'
+  )
 
-  # print('Checking env')
-  # check_env(test_env, warn=True)
-  # print('Closing env')
-  # test_env.close()
+  print('Checking env')
+  check_env(test_env, warn=True)
+  print('Closing env')
+  test_env.close()
 
   env = gym.make(
     'Lights-Sumo-v1',
     steps_limit=steps_limit,
+    max_traffic=20,
     awt_coef=0.05,
     aql_coef=0.05,
     speed_coef=0.15,
     success_coef=0.005,
+    sumo_config_file='sumo_files/intersection.sumocfg',
     render_mode='human'
   )
   obs, _ = env.reset()
