@@ -39,7 +39,7 @@ USE_LEVY = False
 
 EPISODES_PER_MINIBATCH = 4 # How many episodes until each update
 NUM_CPUS = 8 # How many envs are trained in parallel
-TOTAL_BATCHES = 200 # How many updates to run in total for training
+TOTAL_BATCHES = 100 # How many updates to run in total for training
 
 STEPS_PER_UPDATE = MODEL_STEPS_LIMIT * EPISODES_PER_MINIBATCH
 STEPS_PER_BATCH = NUM_CPUS * STEPS_PER_UPDATE # Real batch size (STEPS_PER_BATCH) has to be divisible by MINIBATCH_SIZE
@@ -97,13 +97,13 @@ if __name__ == '__main__':
   )
 
   # Curriculum
-  for (curriculum_i, max_traffic) in enumerate([5, 20, 50]):
+  for (curriculum_i, max_traffic) in enumerate([1, 5, 20]):
     vec_env.close()
     if not os.path.exists(f'{logs_dir}/traffic{max_traffic}'):
       os.makedirs(f'{logs_dir}/traffic{max_traffic}')
     vec_env = make_vec_env('Vehicle-Sumo-v1', n_envs=NUM_CPUS, seed=0, vec_env_cls=SubprocVecEnv, env_kwargs={
       'steps_limit': SIMULATION_STEPS_LIMIT,
-      'max_traffic': MAX_TRAFFIC,
+      'max_traffic': max_traffic,
       'collision_coef': COLLISION_COEF,
       'timeout_coef': TIMEOUT_COEF,
       'speed_coef': SPEED_COEF,
@@ -111,7 +111,7 @@ if __name__ == '__main__':
       'proximity_coef': PROXIMITY_COEF,
       'render_mode': None,
       'sumo_config_file': 'sumo_env/sumo_files/intersection_vehicle.sumocfg',
-    }, monitor_dir=logs_dir, monitor_kwargs={
+    }, monitor_dir=f'{logs_dir}/traffic{max_traffic}', monitor_kwargs={
       'info_keywords': ('episode_mean_speed', 'success')
     })
     model.set_env(vec_env)
