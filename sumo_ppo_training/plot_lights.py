@@ -1,91 +1,28 @@
-import os
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
+from plot_helpers import plot_learning_curves, plot_episode_metrics
 
-from stable_baselines3.common.results_plotter import load_results, ts2xy
+traffic_scenarios = [5, 20, 50]
+scenario_boundary_steps = [120_000, 240_000]
+episode_steps_limit = 150
 
-logs_dir = 'logs'
+metrics = [
+  ('rollout/ep_rew_mean', 'Episode Reward'),
+  ('train/loss', 'Loss'),
+  ('train/approx_kl', 'KL Divergence'),
+  ('train/entropy_loss', 'Entropy Loss'),
+  ('train/policy_gradient_loss', 'Policy Gradient Loss'),
+  ('train/explained_variance', 'Explained Variance'),
+]
 
-def plot_learning_curves(log_folder, title='Learning Curves'):
-  metrics = [
-    ('rollout/ep_rew_mean', 'Episode Reward'),
-    ('train/loss', 'Loss'),
-    ('train/approx_kl', 'KL Divergence'),
-    ('train/entropy_loss', 'Entropy Loss'),
-    ('train/policy_gradient_loss', 'Policy Gradient Loss'),
-    ('train/explained_variance', 'Explained Variance'),
-  ]
+plot_learning_curves(metrics[:2], scenario_boundary_steps, 'lights', 'Traffic Light Learning Curves: Reward and Loss')
+plot_learning_curves(metrics[2:4], scenario_boundary_steps, 'lights', 'Traffic Light Learning Curves: KL Divergence and Ent. Loss')
+plot_learning_curves(metrics[4:], scenario_boundary_steps, 'lights', 'Traffic Light Learning Curves: PG Loss and Explained Variance')
 
-  fig, axes = plt.subplots(nrows=2, ncols=3, figsize=(12, 8), sharex=True)
-  axes = axes.flatten()
-  fig.suptitle(title, fontsize=16)
+metrics = [
+  ('episode_mean_speed', 'Average Speed, m/s'),
+  ('total_arrived', 'Total Successful Vehicles'),
+  ('episode_mean_waiting_time', 'Average Waiting Time, s'),
+  ('episode_mean_queue_length', 'Average Queue Length'),
+]
 
-  for path in os.listdir(logs_dir):
-    if not os.path.isfile(os.path.join(logs_dir, path)) and path.startswith('lights'):
-      progress = pd.read_csv(f'{os.path.join(logs_dir, path)}/progress.csv')
-      x = progress['time/total_timesteps'] // 1000
-
-      for i, (column, label) in enumerate(metrics):
-        ax = axes[i]
-        line, = ax.plot(x, progress[column], label=label)
-        line.set_label(path)
-        ax.set_title(label)
-        ax.grid(True, linestyle='--', alpha=0.6)
-
-        ax.set_ylabel(label)
-        ax.legend()
-
-        # Only the bottom plots need the X-label if sharing X-axis
-        if i >= 3:
-          ax.set_xlabel('Sim Steps, thousands')
-
-  plt.show()
-
-def plot_lights_episode_metrics(log_folder, title='Episode Metrics'):
-  metrics = [
-    ('episode_mean_speed', 'Average Speed, m/s'),
-    ('episode_mean_waiting_time', 'Average Waiting Time, s'),
-    ('total_arrived', 'Total Successful Vehicles'),
-    ('episode_mean_queue_length', 'Average Queue Length'),
-  ]
-
-  fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(12, 8), sharex=True)
-  axes = axes.flatten()
-  fig.suptitle(title, fontsize=16)
-
-  
-  for path in os.listdir(logs_dir):
-    if not os.path.isfile(os.path.join(logs_dir, path)) and path.startswith('lights'):
-      scenario_monitors = []
-      for index, max_traffic in enumerate([5, 20, 50]):
-        monitors = []
-        for i in range(8):
-          monitors.append(pd.read_csv(f'{os.path.join(logs_dir, path)}/traffic{max_traffic}/{i}.monitor.csv', skiprows=1))
-
-        monitor = pd.concat(monitors)
-        monitor = monitor.groupby(monitor.index).mean()
-        monitor.index += len(monitor) * index
-        scenario_monitors.append(monitor)
-      monitor = pd.concat(scenario_monitors)
-      monitor = monitor.rolling(10, center=True).mean()
-      x = (monitor.index + 1) * 2400 // 2000
-
-      for i, (column, label) in enumerate(metrics):
-        ax = axes[i]
-        line, = ax.plot(x, monitor[column], label=label)
-        line.set_label(path)
-        ax.set_title(label)
-        ax.grid(True, linestyle='--', alpha=0.6)
-
-        ax.set_ylabel(label)
-        ax.legend()
-
-        # Only the bottom plots need the X-label if sharing X-axis
-        if i >= 2:
-          ax.set_xlabel('Sim Steps, thousands')
-
-  plt.show()
-
-plot_learning_curves(logs_dir)
-plot_episode_metrics(logs_dir)
+plot_episode_metrics(metrics[:2], traffic_scenarios, scenario_boundary_steps, 'lights', episode_steps_limit, 'Traffic Light Episode Metrics: Speed and Success Rate')
+plot_episode_metrics(metrics[2:], traffic_scenarios, scenario_boundary_steps, 'lights', episode_steps_limit, 'Traffic Light Episode Metrics: AWT and AQL')
