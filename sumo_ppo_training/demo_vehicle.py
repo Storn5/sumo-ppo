@@ -22,11 +22,12 @@ SUCCESS_COEF = 50.0
 PROXIMITY_COEF = 5.0
 
 EPISODES_TO_RUN = 10 # How many episodes to demo
+NUM_CPUS = 8
 
 model_to_load = 'models/vehicle_ppo_lr0_0002_ec0_005_g0_99_l0_95_2026_05_18T14_29_21/819200.zip'
 
 if __name__ == '__main__':
-  vec_env = make_vec_env('Vehicle-Sumo-v1', n_envs=8, seed=0, vec_env_cls=SubprocVecEnv, env_kwargs={
+  vec_env = make_vec_env('Vehicle-Sumo-v1', n_envs=NUM_CPUS, seed=0, vec_env_cls=SubprocVecEnv, env_kwargs={
     'steps_limit': SIMULATION_STEPS_LIMIT,
     'max_traffic': MAX_TRAFFIC,
     'collision_coef': COLLISION_COEF,

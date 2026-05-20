@@ -27,8 +27,8 @@ SUCCESS_COEF = 50.0
 PROXIMITY_COEF = 5.0
 
 # Hyperparameters setup
-LEARNING_RATE = 0.0002
-ENTROPY_COEF = 0.005
+LEARNING_RATE = 0.0003
+ENTROPY_COEF = 0.1
 GAMMA = 0.99
 LAMBDA = 0.95
 
@@ -97,7 +97,7 @@ if __name__ == '__main__':
   )
 
   # Curriculum
-  for (curriculum_i, max_traffic) in enumerate([1, 5, 20]):
+  for (curriculum_i, max_traffic) in enumerate([1, 3, 10]):
     vec_env.close()
     if not os.path.exists(f'{logs_dir}/traffic{max_traffic}'):
       os.makedirs(f'{logs_dir}/traffic{max_traffic}')

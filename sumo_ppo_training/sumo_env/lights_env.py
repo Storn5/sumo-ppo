@@ -225,27 +225,27 @@ if __name__ == '__main__':
     entry_point=LightsEnv,
   )
 
-  test_env = gym.make(
-    'Lights-Sumo-v1',
-    steps_limit=steps_limit,
-    max_traffic=20,
-    awt_coef=0.25,
-    aql_coef=0.25,
-    speed_coef=0.25,
-    success_coef=0.25,
-    sumo_config_file='sumo_files/intersection.sumocfg',
-    render_mode='human'
-  )
+  # test_env = gym.make(
+  #   'Lights-Sumo-v1',
+  #   steps_limit=steps_limit,
+  #   max_traffic=20,
+  #   awt_coef=0.25,
+  #   aql_coef=0.25,
+  #   speed_coef=0.25,
+  #   success_coef=0.25,
+  #   sumo_config_file='sumo_files/intersection.sumocfg',
+  #   render_mode='human'
+  # )
 
-  print('Checking env')
-  check_env(test_env, warn=True)
-  print('Closing env')
-  test_env.close()
+  # print('Checking env')
+  # check_env(test_env, warn=True)
+  # print('Closing env')
+  # test_env.close()
 
   env = gym.make(
     'Lights-Sumo-v1',
     steps_limit=steps_limit,
-    max_traffic=20,
+    max_traffic=50,
     awt_coef=0.05,
     aql_coef=0.05,
     speed_coef=0.15,

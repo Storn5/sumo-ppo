@@ -1,74 +1,88 @@
+import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
 from stable_baselines3.common.results_plotter import load_results, ts2xy
 
-logs_dir = 'logs/vehicle_ppo_lr0_0002_ec0_005_g0_99_l0_95_2026_05_18T14_29_21'
+logs_dir = 'logs'
 
 def plot_learning_curves(log_folder, title='Learning Curves'):
-  progress = pd.read_csv(f'{logs_dir}/progress.csv')
-  x = progress['time/total_timesteps'] // 1000
-
   metrics = [
-    ('rollout/ep_rew_mean', 'Episode Reward', 'green'),
-    ('train/loss', 'Loss', 'red'),
-    ('train/approx_kl', 'KL Divergence', 'purple'),
-    ('train/entropy_loss', 'Entropy Loss', 'blue'),
-    ('train/policy_gradient_loss', 'Policy Gradient Loss', 'cyan'),
-    ('train/explained_variance', 'Explained Variance', 'orange'),
+    ('rollout/ep_rew_mean', 'Episode Reward'),
+    ('train/loss', 'Loss'),
+    ('train/approx_kl', 'KL Divergence'),
+    ('train/entropy_loss', 'Entropy Loss'),
+    ('train/policy_gradient_loss', 'Policy Gradient Loss'),
+    ('train/explained_variance', 'Explained Variance'),
   ]
 
   fig, axes = plt.subplots(nrows=2, ncols=3, figsize=(12, 8), sharex=True)
   axes = axes.flatten()
   fig.suptitle(title, fontsize=16)
 
-  for i, (column, label, color) in enumerate(metrics):
-    ax = axes[i]
-    ax.plot(x, progress[column], label=label, color=color)
-    ax.set_title(label)
-    ax.grid(True, linestyle='--', alpha=0.6)
+  for path in os.listdir(logs_dir):
+    if not os.path.isfile(os.path.join(logs_dir, path)) and path.startswith('vehicle'):
+      progress = pd.read_csv(f'{os.path.join(logs_dir, path)}/progress.csv')
+      x = progress['time/total_timesteps'] // 1000
 
-    ax.set_ylabel(label)
+      for i, (column, label) in enumerate(metrics):
+        ax = axes[i]
+        line, = ax.plot(x, progress[column], label=label)
+        line.set_label(path)
+        ax.set_title(label)
+        ax.grid(True, linestyle='--', alpha=0.6)
 
-    # Only the bottom plots need the X-label if sharing X-axis
-    if i >= 3:
-      ax.set_xlabel('Sim Steps, thousands')
+        ax.set_ylabel(label)
+        ax.legend()
+
+        # Only the bottom plots need the X-label if sharing X-axis
+        if i >= 3:
+          ax.set_xlabel('Sim Steps, thousands')
 
   plt.show()
 
-def plot_lights_episode_metrics(log_folder, title='Episode Metrics'):
-  monitors = []
-  for i in range(8):
-    monitors.append(pd.read_csv(f'{logs_dir}/{i}.monitor.csv', skiprows=1))
-
-  monitor = pd.concat(monitors)
-  monitor = monitor.groupby(monitor.index).mean()
-  monitor = monitor.rolling(10, center=True).mean()
-  x = (monitor.index + 1) * 2400 // 2000
-
+def plot_episode_metrics(log_folder, title='Episode Metrics'):
   metrics = [
-    ('episode_mean_speed', 'Average Speed, m/s', 'blue'),
-    ('success', 'Success Rate', 'green'),
+    ('episode_mean_speed', 'Average Speed, m/s'),
+    ('success', 'Success Rate'),
   ]
 
   fig, axes = plt.subplots(nrows=2, ncols=1, figsize=(12, 8), sharex=True)
   axes = axes.flatten()
   fig.suptitle(title, fontsize=16)
 
-  for i, (column, label, color) in enumerate(metrics):
-    ax = axes[i]
-    ax.plot(x, monitor[column], label=label, color=color)
-    ax.set_title(label)
-    ax.grid(True, linestyle='--', alpha=0.6)
+  for path in os.listdir(logs_dir):
+    if not os.path.isfile(os.path.join(logs_dir, path)) and path.startswith('vehicle'):
+      scenario_monitors = []
+      for index, max_traffic in enumerate([1, 3, 10]):
+        monitors = []
+        for i in range(8):
+          monitors.append(pd.read_csv(f'{os.path.join(logs_dir, path)}/traffic{max_traffic}/{i}.monitor.csv', skiprows=1))
 
-    ax.set_ylabel(label)
+        monitor = pd.concat(monitors)
+        monitor = monitor.groupby(monitor.index).mean()
+        monitor.index += len(monitor) * index
+        scenario_monitors.append(monitor)
+      monitor = pd.concat(scenario_monitors)
+      monitor = monitor.rolling(10, center=True).mean()
+      x = (monitor.index + 1) * 2400 // 2000
 
-    # Only the bottom plots need the X-label if sharing X-axis
-    if i >= 1:
-      ax.set_xlabel('Sim Steps, thousands')
+      for i, (column, label) in enumerate(metrics):
+        ax = axes[i]
+        line, = ax.plot(x, monitor[column], label=label)
+        line.set_label(path)
+        ax.set_title(label)
+        ax.grid(True, linestyle='--', alpha=0.6)
+
+        ax.set_ylabel(label)
+        ax.legend()
+
+        # Only the bottom plots need the X-label if sharing X-axis
+        if i >= 1:
+          ax.set_xlabel('Sim Steps, thousands')
 
   plt.show()
 
 plot_learning_curves(logs_dir)
-plot_lights_episode_metrics(logs_dir)
+plot_episode_metrics(logs_dir)

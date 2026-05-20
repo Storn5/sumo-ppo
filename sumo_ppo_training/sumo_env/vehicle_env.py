@@ -15,7 +15,7 @@ ACTION_BRAKE = 2
 ACTION_SWITCH_LANE_0 = 3
 ACTION_SWITCH_LANE_1 = 4
 AGENT_VEHICLE_ID = 'agent'
-ABSOLUTE_MAX_TRAFFIC = 20 # Maximum number of surrounding vehicles in the observation space, the actual max_traffic limit could be smaller
+ABSOLUTE_MAX_TRAFFIC = 10 # Maximum number of surrounding vehicles in the observation space, the actual max_traffic limit could be smaller
 ACTION_LENGTH = 5 # 0.5 seconds for each agent action
 STEP_LENGTH = 0.1 # Length of a step in seconds, in this case 1 second = 10 steps
 LATERAL_RESOLUTION = 0.2 # Accuracy of side-to-side vehicle movement for lane changes
@@ -331,7 +331,7 @@ if __name__ == '__main__':
   env = gym.make(
     'Vehicle-Sumo-v1',
     steps_limit=steps_limit,
-    max_traffic=1,
+    max_traffic=10,
     collision_coef=100.0,
     timeout_coef=100.0,
     speed_coef=0.1,
