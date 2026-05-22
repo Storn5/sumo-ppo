@@ -1,7 +1,7 @@
 from plot_helpers import plot_learning_curves, plot_episode_metrics
 
 traffic_scenarios = [1, 3, 10]
-scenario_boundary_steps = [409_600, 819_200]
+scenario_boundary_steps = [409_600, 1_228_800]
 episode_steps_limit = 128
 
 metrics = [

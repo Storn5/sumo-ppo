@@ -10,6 +10,12 @@ def extract_label_from_path(path):
 
   if 'levy' in path[0]:
     label += ' with Levy Flight'
+    if 'beta0' in path:
+      beta_index = list('beta0' in x for x in path).index(True)
+      label += f', Beta=0.{path[beta_index + 1]}'
+    if 'alpha1' in path:
+      alpha_index = list('alpha1' in x for x in path).index(True)
+      label += f', Alpha=0.{path[alpha_index + 1]}'
   if 'lrdecay' in path:
     label += ', LR decay'
   if 'crdecay' in path:
@@ -90,6 +96,8 @@ def plot_episode_metrics(metrics, traffic_scenarios, scenario_boundary_steps, pa
         print(monitor)
         x = monitor['l_cumsum'] * 8 // 1000
         monitor = monitor.rolling(100, center=True).mean()
+      else:
+        monitor = monitor.rolling(5, center=True).mean()
 
       for i, (column, label) in enumerate(metrics):
         ax = axes[i]

@@ -27,15 +27,17 @@ SUCCESS_COEF = 50.0
 PROXIMITY_COEF = 5.0
 
 # Hyperparameters setup
-LEARNING_RATE = 0.0003
-ENTROPY_COEF = 0.1
+LEARNING_RATE = 0.001
+ENTROPY_COEF = 0.05
 GAMMA = 0.99
 LAMBDA = 0.95
 
 ENT_COEF_DECAY = 0.0
 CLIP_RANGE_DECAY = False
 LR_DECAY = False
-USE_LEVY = False
+USE_LEVY = True
+BETA_LEVY = 0.005
+ALPHA_LEVY = 1.5
 
 EPISODES_PER_MINIBATCH = 4 # How many episodes until each update
 NUM_CPUS = 8 # How many envs are trained in parallel
@@ -53,7 +55,7 @@ if CLIP_RANGE_DECAY:
 if LR_DECAY:
   model_name = model_name.replace('ppo', f'ppo_lrdecay'.replace('.', '_'))
 if USE_LEVY:
-  model_name = model_name.replace('ppo', 'levyppo')
+  model_name = model_name.replace('ppo', f'levyppo_beta{BETA_LEVY}_alpha{ALPHA_LEVY}'.replace('.', '_'))
 model_name = f'{model_name}_{datetime.now().strftime('%Y_%m_%dT%H_%M_%S')}'
 models_dir = f'models/{model_name}'
 logs_dir = f'logs/{model_name}'
@@ -81,7 +83,8 @@ if __name__ == '__main__':
   if USE_LEVY:
     model = LevyPPO('MlpPolicy', vec_env, device='cpu', verbose=0, tensorboard_log=logs_dir, n_steps=STEPS_PER_UPDATE,
       batch_size=MINIBATCH_SIZE, learning_rate=(linear_schedule(LEARNING_RATE) if LR_DECAY else LEARNING_RATE),
-      clip_range=(linear_schedule(0.2) if CLIP_RANGE_DECAY else 0.2), gamma=GAMMA, gae_lambda=LAMBDA)
+      clip_range=(linear_schedule(0.2) if CLIP_RANGE_DECAY else 0.2), gamma=GAMMA, gae_lambda=LAMBDA,
+      beta_levy=BETA_LEVY, alpha_levy=ALPHA_LEVY)
   else:
     model = PPO('MlpPolicy', vec_env, device='cpu', verbose=0, tensorboard_log=logs_dir, n_steps=STEPS_PER_UPDATE,
       batch_size=MINIBATCH_SIZE, learning_rate=(linear_schedule(LEARNING_RATE) if LR_DECAY else LEARNING_RATE),
@@ -115,6 +118,7 @@ if __name__ == '__main__':
       'info_keywords': ('episode_mean_speed', 'success')
     })
     model.set_env(vec_env)
+    TOTAL_BATCHES += curriculum_i * 100
 
     if ENT_COEF_DECAY:
       for i in range(1 + (curriculum_i * TOTAL_BATCHES), TOTAL_BATCHES + 1 + (curriculum_i * TOTAL_BATCHES)):
