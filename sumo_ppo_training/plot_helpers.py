@@ -15,7 +15,7 @@ def extract_label_from_path(path):
       label += f', Beta=0.{path[beta_index + 1]}'
     if 'alpha1' in path:
       alpha_index = list('alpha1' in x for x in path).index(True)
-      label += f', Alpha=0.{path[alpha_index + 1]}'
+      label += f', Alpha=1.{path[alpha_index + 1]}'
   if 'lrdecay' in path:
     label += ', LR decay'
   if 'crdecay' in path:
@@ -45,16 +45,17 @@ def plot_learning_curves(metrics, scenario_boundary_steps, pathstart, title='Lea
     if not os.path.isfile(os.path.join(logs_dir, path)) and path.startswith(pathstart):
       progress = pd.read_csv(f'{os.path.join(logs_dir, path)}/progress.csv')
       x = progress['time/total_timesteps'] // 1000
+      if scenario_boundary_steps[1] > 1_000_000:
+        progress = progress.rolling(50, center=True).mean()
 
       for i, (column, label) in enumerate(metrics):
         ax = axes[i]
-        line, = ax.plot(x, progress[column], label=label)
-        line.set_label(extract_label_from_path(path))
+        line, = ax.plot(x, progress[column])
+        if i >= 1:
+          line.set_label(extract_label_from_path(path))
         ax.set_title(label)
         ax.grid(True, linestyle='--', alpha=0.6)
-
         ax.set_ylabel(label)
-        ax.legend()
 
         for boundary in scenario_boundary_steps:
           ax.axvline(boundary // 1000)
@@ -63,6 +64,8 @@ def plot_learning_curves(metrics, scenario_boundary_steps, pathstart, title='Lea
         if i >= 1:
           ax.set_xlabel('Sim Steps, thousands')
 
+  fig.legend(loc='outside lower left', frameon=False)
+  plt.subplots_adjust(left=0.34, right=0.95, bottom=0.14)
   plt.show()
 
 def plot_episode_metrics(metrics, traffic_scenarios, scenario_boundary_steps, pathstart, episode_steps_limit, title='Episode Metrics', logs_dir='logs', average_envs=True):
@@ -89,25 +92,23 @@ def plot_episode_metrics(metrics, traffic_scenarios, scenario_boundary_steps, pa
         monitor.index += scenario_monitors[index-1].index[-1] + 1 if index > 0 else 0
         scenario_monitors.append(monitor)
       monitor = pd.concat(scenario_monitors)
-      #monitor = monitor.rolling(10, center=True).mean()
       x = (monitor.index + 1) * 8 * episode_steps_limit // 1000
       if not average_envs:
         monitor['l_cumsum'] = monitor['l'].astype(np.float32).cumsum()
         print(monitor)
         x = monitor['l_cumsum'] * 8 // 1000
-        monitor = monitor.rolling(100, center=True).mean()
+        monitor = monitor.rolling(1000, center=True).mean()
       else:
         monitor = monitor.rolling(5, center=True).mean()
 
       for i, (column, label) in enumerate(metrics):
         ax = axes[i]
-        line, = ax.plot(x, monitor[column], label=label)
-        line.set_label(extract_label_from_path(path))
+        line, = ax.plot(x, monitor[column])
+        if i >= 1:
+          line.set_label(extract_label_from_path(path))
         ax.set_title(label)
         ax.grid(True, linestyle='--', alpha=0.6)
-
         ax.set_ylabel(label)
-        ax.legend()
 
         for boundary in scenario_boundary_steps:
           ax.axvline(boundary // 1000)
@@ -116,4 +117,6 @@ def plot_episode_metrics(metrics, traffic_scenarios, scenario_boundary_steps, pa
         if i >= 1:
           ax.set_xlabel('Sim Steps, thousands')
 
+  fig.legend(loc='outside lower left', frameon=False)
+  plt.subplots_adjust(left=0.34, right=0.95, bottom=0.14)
   plt.show()
